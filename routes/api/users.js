@@ -242,6 +242,14 @@ router.post("/resetpassword", (req, res) => {
   });
 });
 
+router.post("/logout", (req, res) => {
+  console.log("ON DESTROY: ", req.session, req.session.token, req.session.id);
+  req.session.destroy(err => {
+    if (err)
+      console.log(err);
+  });
+});
+
 router.post("/save", (req, res) => {
   console.log("ON SAVE: ", req.session, req.session.token, req.session.id);
 });
