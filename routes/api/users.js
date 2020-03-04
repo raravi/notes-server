@@ -151,7 +151,7 @@ router.post("/forgotpassword", (req, res) => {
           });
 
           const mailOptions = {
-            from: 'texter-app@gmail.com',
+            from: 'notes-app@gmail.com',
             to: `${user.email}`,
             subject: 'Link To Reset Password',
             text:
