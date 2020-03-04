@@ -4,15 +4,23 @@ const bodyParser = require("body-parser");
 const rateLimit = require("express-rate-limit");
 const cors = require('cors');
 const path = require('path');
+const session = require('express-session');
+const MongoStore = require('connect-mongo')(session);
 const express = require('express');
+
 const app = express();
 const port = 8000;
 
 const users = require("./routes/api/users");
-const db = require("./config/keys").mongoURI;
+const keys = require("./config/keys");
+const db = keys.mongoURI;
 
 // Enable CORS
-app.use(cors());
+app.use(cors({
+  origin:['http://localhost:3000'],
+  methods:['GET','POST'],
+  credentials: true // enable set cookie (needed for AXIOS frontend requests)
+}));
 
 // Rate Limiter Middleware
 const limiter = rateLimit({
@@ -35,6 +43,13 @@ mongoose
   .connect(db, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("MongoDB successfully connected"))
   .catch(err => console.log(err));
+
+app.use(session({
+  secret: keys.sessionSecret,
+  saveUninitialized: false, // don't create session until something stored
+  resave: false, //don't save session if unmodified
+  store: new MongoStore({ mongooseConnection: mongoose.connection })
+}));
 
 // Start server
 const server = require('http').Server(app);

@@ -94,6 +94,9 @@ router.post("/login", (req, res) => {
             expiresIn: 31556926 // 1 year in seconds
           },
           (err, token) => {
+            console.log("BEFORE", req.session, req.session.id);
+            req.session.token = token;
+            console.log("AFTER", req.session);
             res.json({
               success: true,
               token: "Bearer " + token
@@ -237,6 +240,10 @@ router.post("/resetpassword", (req, res) => {
     });
 
   });
+});
+
+router.post("/save", (req, res) => {
+  console.log("ON SAVE: ", req.session, req.session.token, req.session.id);
 });
 
 module.exports = router;
