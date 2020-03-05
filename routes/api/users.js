@@ -15,9 +15,10 @@ const validateForgotPasswordInput = require("../../validation/forgotpassword");
 const validateResetPasswordInput = require("../../validation/resetpassword");
 
 /**
- * Load User model
+ * Load User / Note models
  */
 const User = require("../../models/User");
+const Note = require("../../models/Note");
 
 /**
  * @route POST api/users/register
@@ -94,12 +95,22 @@ router.post("/login", (req, res) => {
             expiresIn: 31556926 // 1 year in seconds
           },
           (err, token) => {
-            console.log("BEFORE", req.session, req.session.id);
             req.session.token = token;
-            console.log("AFTER", req.session);
-            res.json({
-              success: true,
-              token: "Bearer " + token
+            Note.find({userid: user.id}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
+              let notes = [];
+              docs.forEach(doc =>
+                notes.push({
+                  id: doc.id,
+                  note: doc.note,
+                  modifieddate: doc.modifieddate,
+                  createddate: doc.createddate
+                })
+              );
+              res.json({
+                success: true,
+                token: "Bearer " + token,
+                notes: notes
+              });
             });
           }
         );
@@ -242,14 +253,23 @@ router.post("/resetpassword", (req, res) => {
   });
 });
 
+/**
+ * @route LOGOUT api/users/logout
+ * @desc Destroy the session upon logout.
+ * @access Public
+ */
 router.post("/logout", (req, res) => {
-  console.log("ON DESTROY: ", req.session, req.session.token, req.session.id);
   req.session.destroy(err => {
     if (err)
       console.log(err);
   });
 });
 
+/**
+ * @route SAVE api/users/save
+ * @desc Save the note to DB.
+ * @access Public
+ */
 router.post("/save", (req, res) => {
   console.log("ON SAVE: ", req.session, req.session.token, req.session.id);
 });
