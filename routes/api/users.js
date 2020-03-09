@@ -272,6 +272,24 @@ router.post("/logout", (req, res) => {
  */
 router.post("/save", (req, res) => {
   console.log("ON SAVE: ", req.session, req.session.token, req.session.id);
+  console.log(req.body);
+  Note.findById(req.body.noteid).then(note => {
+    // Check if note exists
+    if (!note) {
+      return res.status(404).json({ note: "Note not found" });
+    }
+    if (note.userid === req.body.userid) {
+      note.note = req.body.notetext;
+      note.modifieddate = Date.now();
+
+      // update the note in DB
+      note.save()
+        .then(note => {
+          return res.json({success: "Note updated!"});
+        })
+        .catch(err => console.log(err));
+    }
+  });
 });
 
 module.exports = router;
