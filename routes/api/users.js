@@ -267,12 +267,12 @@ router.post("/logout", (req, res) => {
 });
 
 /**
- * @route SAVE api/users/save
- * @desc Save the note to DB.
+ * @route SYNC api/users/save
+ * @desc Sync the note to DB.
  * @access Public
  */
-router.post("/save", (req, res) => {
-  console.log("ON SAVE: ", req.session, req.session.id);
+router.post("/sync", (req, res) => {
+  console.log("ON Sync: ", req.session, req.session.id);
   console.log(req.body);
   Note.findById(req.body.noteid).then(note => {
     // Check if note exists
@@ -280,12 +280,12 @@ router.post("/save", (req, res) => {
       return res.status(404).json({ error: "Note not found" });
     }
     if (note.userid === req.body.userid) {
-      console.log("note.modifiedsession: ", note.modifiedsession);
-      console.log("req.session.id: ", req.session.id);
-      console.log("note.modifieddate: ", note.modifieddate, typeof note.modifieddate);
-      console.log("req.session.synceddate: ", req.session.synceddate, typeof req.session.synceddate);
-      if (note.modifiedsession !== req.session.id && note.modifieddate > req.session.synceddate) {
-        req.session.synceddate = note.modifieddate.getTime();
+      let modifiedDateOfNote = req.session[req.body.noteid] === undefined
+                              ? req.session.synceddate
+                              : req.session[req.body.noteid];
+
+      if (note.modifiedsession !== req.session.id && note.modifieddate > modifiedDateOfNote) {
+        req.session[req.body.noteid] = note.modifieddate.getTime();
         return res.json({
           notemodified: "Note modified by another session",
           note: note.note
