@@ -98,6 +98,7 @@ router.post("/login", (req, res) => {
             req.session.token = token;
             Note.find({userid: user.id}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
               let notes = [];
+              req.session.synceddate = Date.now();
               docs.forEach(doc =>
                 notes.push({
                   id: doc.id,
@@ -271,23 +272,40 @@ router.post("/logout", (req, res) => {
  * @access Public
  */
 router.post("/save", (req, res) => {
-  console.log("ON SAVE: ", req.session, req.session.token, req.session.id);
+  console.log("ON SAVE: ", req.session, req.session.id);
   console.log(req.body);
   Note.findById(req.body.noteid).then(note => {
     // Check if note exists
     if (!note) {
-      return res.status(404).json({ note: "Note not found" });
+      return res.status(404).json({ error: "Note not found" });
     }
     if (note.userid === req.body.userid) {
-      note.note = req.body.notetext;
-      note.modifieddate = Date.now();
+      console.log("note.modifiedsession: ", note.modifiedsession);
+      console.log("req.session.id: ", req.session.id);
+      console.log("note.modifieddate: ", note.modifieddate, typeof note.modifieddate);
+      console.log("req.session.synceddate: ", req.session.synceddate, typeof req.session.synceddate);
+      if (note.modifiedsession !== req.session.id && note.modifieddate > req.session.synceddate) {
+        req.session.synceddate = note.modifieddate.getTime();
+        return res.json({
+          notemodified: "Note modified by another session",
+          note: note.note
+        });
+      }
 
-      // update the note in DB
-      note.save()
-        .then(note => {
-          return res.json({success: "Note updated!"});
-        })
-        .catch(err => console.log(err));
+      if (!req.body.notetext) {
+        return res.json({nochanges: "No changes"});
+      } else {
+        note.note = req.body.notetext;
+        note.modifieddate = Date.now();
+        note.modifiedsession = req.session.id;
+
+        // update the note in DB
+        note.save()
+          .then(note => {
+            return res.json({success: "Note updated!"});
+          })
+          .catch(err => console.log(err));
+      }
     }
   });
 });

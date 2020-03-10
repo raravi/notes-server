@@ -20,6 +20,9 @@ const NoteSchema = new Schema({
   createddate: {
     type: Date,
     default: Date.now
+  },
+  modifiedsession: {
+    type: String
   }
 });
 
