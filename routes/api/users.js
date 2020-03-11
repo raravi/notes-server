@@ -103,8 +103,7 @@ router.post("/login", (req, res) => {
                 notes.push({
                   id: doc.id,
                   note: doc.note,
-                  modifieddate: doc.modifieddate,
-                  createddate: doc.createddate
+                  modifieddate: doc.modifieddate
                 })
               );
               res.json({
@@ -125,7 +124,7 @@ router.post("/login", (req, res) => {
 });
 
 /**
- * @route FORGOTPASSWORD api/users/forgotpassword
+ * @route POST api/users/forgotpassword
  * @desc Get valid email from user and send a RESET mail to the registered email.
  * @access Public
  */
@@ -195,7 +194,7 @@ router.post("/forgotpassword", (req, res) => {
 });
 
 /**
- * @route RESETPASSWORD api/users/resetpassword
+ * @route POST api/users/resetpassword
  * @desc Get valid RESET code, new password from user and update the password in DB.
  * @access Public
  */
@@ -255,7 +254,7 @@ router.post("/resetpassword", (req, res) => {
 });
 
 /**
- * @route LOGOUT api/users/logout
+ * @route POST api/users/logout
  * @desc Destroy the session upon logout.
  * @access Public
  */
@@ -267,13 +266,13 @@ router.post("/logout", (req, res) => {
 });
 
 /**
- * @route SYNC api/users/save
+ * @route POST api/users/sync
  * @desc Sync the note to DB.
  * @access Public
  */
 router.post("/sync", (req, res) => {
-  console.log("ON Sync: ", req.session, req.session.id);
-  console.log(req.body);
+  // console.log("ON Sync: ", req.session, req.session.id);
+  // console.log(req.body);
   Note.findById(req.body.noteid).then(note => {
     // Check if note exists
     if (!note) {
@@ -288,7 +287,8 @@ router.post("/sync", (req, res) => {
         req.session[req.body.noteid] = note.modifieddate.getTime();
         return res.json({
           notemodified: "Note modified by another session",
-          note: note.note
+          note: note.note,
+          modifieddate: note.modifieddate
         });
       }
 
@@ -302,11 +302,83 @@ router.post("/sync", (req, res) => {
         // update the note in DB
         note.save()
           .then(note => {
-            return res.json({success: "Note updated!"});
+            return res.json({
+              success: "Note updated!",
+              modifieddate: note.modifieddate
+            });
           })
           .catch(err => console.log(err));
       }
     }
+  });
+});
+
+/**
+ * @route POST api/users/sendall
+ * @desc Send all the notes from DB.
+ * @access Public
+ */
+router.post("/sendall", (req, res) => {
+  Note.find({userid: req.body.userid}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
+    let notes = [];
+
+    docs.forEach(doc =>
+      notes.push({
+        id: doc.id,
+        note: doc.note,
+        modifieddate: doc.modifieddate
+      })
+    );
+    res.json({
+      success: true,
+      notes: notes
+    });
+  });
+});
+
+/**
+ * @route POST api/users/new
+ * @desc New the note to DB.
+ * @access Public
+ */
+router.post("/new", (req, res) => {
+  let date = Date.now();
+  const newNote = new Note({
+            userid: req.body.userid,
+            note: "# An awesome new note",
+            modifiedsession: req.session.id
+          });
+  newNote
+    .save()
+    .then(note => {
+      console.log("Note added to DB!");
+      return res.json({
+        note: {
+          id: note.id,
+          note: note.note,
+          modifieddate: note.modifieddate,
+          createddate: note.createddate
+        }
+      });
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(400).json({error: "Adding to DB failed!"});
+    });
+});
+
+/**
+ * @route POST api/users/delete
+ * @desc Delete the note in DB.
+ * @access Public
+ */
+router.post("/delete", (req, res) => {
+  Note.findByIdAndRemove(req.body.noteid).then(() => {
+    return res.json({success: "Note deleted!"});
+  })
+  .catch(err => {
+    console.log(err);
+    return res.status(400).json({error: "Delete failed!"});
   });
 });
 
