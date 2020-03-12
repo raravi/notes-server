@@ -43,11 +43,12 @@ mongoose
   .connect(db, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    useFindAndModify: false 
+    useFindAndModify: false
   })
   .then(() => console.log("MongoDB successfully connected"))
   .catch(err => console.log(err));
 
+// Session Middleware
 app.use(session({
   secret: keys.sessionSecret,
   saveUninitialized: false, // don't create session until something stored
