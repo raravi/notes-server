@@ -176,8 +176,6 @@ router.post("/forgotpassword", (req, res) => {
               + 'If you did not request this, please ignore this email and your password will remain unchanged.\n',
           };
 
-          console.log('sending email...');
-
           // Send mail
           transporter.sendMail(mailOptions, (err, response) => {
             if (err) {
@@ -271,8 +269,6 @@ router.post("/logout", (req, res) => {
  * @access Public
  */
 router.post("/sync", (req, res) => {
-  // console.log("ON Sync: ", req.session, req.session.id);
-  // console.log(req.body);
   Note.findById(req.body.noteid).then(note => {
     // Check if note exists
     if (!note) {
@@ -351,7 +347,6 @@ router.post("/new", (req, res) => {
   newNote
     .save()
     .then(note => {
-      console.log("Note added to DB!");
       return res.json({
         note: {
           id: note.id,
