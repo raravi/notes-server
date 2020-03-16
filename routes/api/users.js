@@ -257,10 +257,14 @@ router.post("/resetpassword", (req, res) => {
  * @access Public
  */
 router.post("/logout", (req, res) => {
-  req.session.destroy(err => {
-    if (err)
-      console.log(err);
-  });
+  if (req.session.token && req.session.token === req.body.token.slice(7)) {
+    req.session.destroy(err => {
+      if (err)
+        console.log(err);
+    });
+  } else {
+    return res.status(404).json({ error: "Auth Error" });
+  }
 });
 
 /**
@@ -269,44 +273,48 @@ router.post("/logout", (req, res) => {
  * @access Public
  */
 router.post("/sync", (req, res) => {
-  Note.findById(req.body.noteid).then(note => {
-    // Check if note exists
-    if (!note) {
-      return res.status(404).json({ error: "Note not found" });
-    }
-    if (note.userid === req.body.userid) {
-      let modifiedDateOfNote = req.session[req.body.noteid] === undefined
-                              ? req.session.synceddate
-                              : req.session[req.body.noteid];
-
-      if (note.modifiedsession !== req.session.id && note.modifieddate > modifiedDateOfNote) {
-        req.session[req.body.noteid] = note.modifieddate.getTime();
-        return res.json({
-          notemodified: "Note modified by another session",
-          note: note.note,
-          modifieddate: note.modifieddate
-        });
+  if (req.session.token && req.session.token === req.body.token.slice(7)) {
+    Note.findById(req.body.noteid).then(note => {
+      // Check if note exists
+      if (!note) {
+        return res.status(404).json({ error: "Note not found" });
       }
+      if (note.userid === req.body.userid) {
+        let modifiedDateOfNote = req.session[req.body.noteid] === undefined
+                                ? req.session.synceddate
+                                : req.session[req.body.noteid];
 
-      if (!req.body.notetext) {
-        return res.json({nochanges: "No changes"});
-      } else {
-        note.note = req.body.notetext;
-        note.modifieddate = Date.now();
-        note.modifiedsession = req.session.id;
+        if (note.modifiedsession !== req.session.id && note.modifieddate > modifiedDateOfNote) {
+          req.session[req.body.noteid] = note.modifieddate.getTime();
+          return res.json({
+            notemodified: "Note modified by another session",
+            note: note.note,
+            modifieddate: note.modifieddate
+          });
+        }
 
-        // update the note in DB
-        note.save()
-          .then(note => {
-            return res.json({
-              success: "Note updated!",
-              modifieddate: note.modifieddate
-            });
-          })
-          .catch(err => console.log(err));
+        if (!req.body.notetext) {
+          return res.json({nochanges: "No changes"});
+        } else {
+          note.note = req.body.notetext;
+          note.modifieddate = Date.now();
+          note.modifiedsession = req.session.id;
+
+          // update the note in DB
+          note.save()
+            .then(note => {
+              return res.json({
+                success: "Note updated!",
+                modifieddate: note.modifieddate
+              });
+            })
+            .catch(err => console.log(err));
+        }
       }
-    }
-  });
+    });
+  } else {
+    return res.status(404).json({ error: "Auth Error" });
+  }
 });
 
 /**
@@ -315,21 +323,25 @@ router.post("/sync", (req, res) => {
  * @access Public
  */
 router.post("/sendall", (req, res) => {
-  Note.find({userid: req.body.userid}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
-    let notes = [];
+  if (req.session.token && req.session.token === req.body.token.slice(7)) {
+    Note.find({userid: req.body.userid}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
+      let notes = [];
 
-    docs.forEach(doc =>
-      notes.push({
-        id: doc.id,
-        note: doc.note,
-        modifieddate: doc.modifieddate
-      })
-    );
-    res.json({
-      success: true,
-      notes: notes
+      docs.forEach(doc =>
+        notes.push({
+          id: doc.id,
+          note: doc.note,
+          modifieddate: doc.modifieddate
+        })
+      );
+      res.json({
+        success: true,
+        notes: notes
+      });
     });
-  });
+  } else {
+    return res.status(404).json({ error: "Auth Error" });
+  }
 });
 
 /**
@@ -338,28 +350,32 @@ router.post("/sendall", (req, res) => {
  * @access Public
  */
 router.post("/new", (req, res) => {
-  let date = Date.now();
-  const newNote = new Note({
-            userid: req.body.userid,
-            note: "# An awesome new note",
-            modifiedsession: req.session.id
-          });
-  newNote
-    .save()
-    .then(note => {
-      return res.json({
-        note: {
-          id: note.id,
-          note: note.note,
-          modifieddate: note.modifieddate,
-          createddate: note.createddate
-        }
+  if (req.session.token && req.session.token === req.body.token.slice(7)) {
+    let date = Date.now();
+    const newNote = new Note({
+              userid: req.body.userid,
+              note: "# An awesome new note",
+              modifiedsession: req.session.id
+            });
+    newNote
+      .save()
+      .then(note => {
+        return res.json({
+          note: {
+            id: note.id,
+            note: note.note,
+            modifieddate: note.modifieddate,
+            createddate: note.createddate
+          }
+        });
+      })
+      .catch(err => {
+        console.log(err);
+        return res.status(400).json({error: "Adding to DB failed!"});
       });
-    })
-    .catch(err => {
-      console.log(err);
-      return res.status(400).json({error: "Adding to DB failed!"});
-    });
+  } else {
+    return res.status(404).json({ error: "Auth Error" });
+  }
 });
 
 /**
@@ -368,13 +384,17 @@ router.post("/new", (req, res) => {
  * @access Public
  */
 router.post("/delete", (req, res) => {
-  Note.findByIdAndRemove(req.body.noteid).then(() => {
-    return res.json({success: "Note deleted!"});
-  })
-  .catch(err => {
-    console.log(err);
-    return res.status(400).json({error: "Delete failed!"});
-  });
+  if (req.session.token && req.session.token === req.body.token.slice(7)) {
+    Note.findByIdAndRemove(req.body.noteid).then(() => {
+      return res.json({success: "Note deleted!"});
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(400).json({error: "Delete failed!"});
+    });
+  } else {
+    return res.status(404).json({ error: "Auth Error" });
+  }
 });
 
 module.exports = router;
