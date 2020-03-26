@@ -1,10 +1,15 @@
 const express = require("express");
 const router = express.Router();
+const passport = require("passport");
 const crypto = require('crypto');
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const keys = require("../../config/keys");
+
+// Passport middleware
+router.use(passport.initialize());
+require("../../config/passport")(passport);
 
 /**
  * Load input validation
@@ -45,12 +50,19 @@ router.post("/register", (req, res) => {
       // The top result on Google, the tutorial from scotch.io, also uses bcrypt with a lesser cost factor of 8. Both of these are small, but 8 is really small. Most bcrypt libraries these days use 12. The cost factor of 8 was for administrator accounts eighteen years ago when the original bcrypt paper was released.
       bcrypt.genSalt(12, (err, salt) => {
         bcrypt.hash(newUser.password, salt, (err, hash) => {
-          if (err) throw err;
+          if (err)
+          {
+            console.error('    bcrypt hashing error: ', err);
+            return res.status(404).json({email: "There was a problem, please try again!"});
+          }
           newUser.password = hash;
           newUser
             .save()
             .then(user => res.json({createduser: "New user registered successfully!"}))
-            .catch(err => console.log(err));
+            .catch(err => {
+              console.log(err);
+              res.status(404).json({email: "There was a problem, please try again!"});
+            });
         });
       });
     }
@@ -151,7 +163,11 @@ router.post("/forgotpassword", (req, res) => {
     // hash the Reset token
     bcrypt.genSalt(12, (err, salt) => {
       bcrypt.hash(user.resetPasswordToken, salt, (err, hash) => {
-        if (err) throw err;
+        if (err)
+        {
+          console.error('    bcrypt hashing error: ', err);
+          return res.status(404).json({email: "The reset email couldn't be sent, please try again!"});
+        }
         user.resetPasswordToken = hash;
 
         // Save the user to DB
@@ -177,14 +193,15 @@ router.post("/forgotpassword", (req, res) => {
           };
 
           // Send mail
-          transporter.sendMail(mailOptions, (err, response) => {
-            if (err) {
-              console.error('there was an error: ', err);
-            } else {
+          transporter.sendMail(mailOptions)
+            .then(response => {
               console.log('here is the response: ', response);
               res.status(200).json({emailsent: 'The reset email has been sent, please check your inbox!'});
-            }
-          });
+            })
+            .catch(err => {
+              console.error('there was an error: ', err);
+              res.status(404).json({email: "The reset email couldn't be sent, please try again!"});
+            });
         });
       });
     });
@@ -256,15 +273,14 @@ router.post("/resetpassword", (req, res) => {
  * @desc Destroy the session upon logout.
  * @access Public
  */
-router.post("/logout", (req, res) => {
-  if (req.session.token && req.session.token === req.body.token.slice(7)) {
-    req.session.destroy(err => {
-      if (err)
-        console.log(err);
-    });
-  } else {
-    return res.status(404).json({ error: "Auth Error" });
-  }
+router.post("/logout", passport.authenticate('jwt', { session: false }), (req, res) => {
+  req.session.destroy(err => {
+    if (err)
+      console.log(err);
+    else {
+      return res.status(200).json({ logoff: "Logged off" });
+    }
+  });
 });
 
 /**

@@ -1,19 +1,240 @@
 const request = require('supertest');
 const app = require('../server');
 const expect = require('chai').expect;
+const sinon = require('sinon');
 const mongoose = require("mongoose");
 const jwtDecode = require('jwt-decode');
+const nodemailer = require("nodemailer");
+const bcrypt = require("bcryptjs");
+const User = require("../models/User");
+const Session = require("./models/Session");
+
+function deleteSession(token) {
+  Session.find({}, {}, { sort: { _id: 1 }}).then((sessions) => {
+    let sessionId;
+    for (let i = 0; i < sessions.length; i++) {
+      let sessionData = JSON.parse(sessions[i].session);
+      if (sessionData.token === token) {
+        sessionId = sessions[i].id;
+        break;
+      }
+    }
+    if (sessionId) {
+      Session.findByIdAndRemove(sessionId).then((session) => {
+        if (session)
+          console.log("    Session deleted!");
+        else
+          console.log("    Session not deleted!");
+      })
+      .catch(err => {
+        console.log("    Delete failed!");
+      });
+    }
+  });
+}
+
+before(function() {
+  console.log("  before");
+});
+
+after(function() {
+  mongoose.disconnect();
+  console.log("  after: disconnected DB");
+});
+
+describe('POST /register', function() {
+  it('success: new user registered successfully', function() {
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "Amith Raravi",
+        "email": "amith.raravi1@gmail.com",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        expect(response.body.createduser).to.equal('New user registered successfully!');
+        User.findOneAndRemove({email: 'amith.raravi1@gmail.com'}).then(() => {
+          console.log("    Note deleted!");
+        })
+        .catch(err => {
+          console.log("    Delete failed!", err);
+        });
+      });
+  });
+
+  it('error: bcrypt hashing error', function() {
+    const bcryptHash = sinon.stub(bcrypt, 'hash');
+    bcryptHash.callsFake((p1, p2, cb) => cb("Error"));
+
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "Amith Raravi",
+        "email": "amith.raravi1@gmail.com",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(404)
+      .then(response => {
+        expect(response.body.email).to.equal('There was a problem, please try again!');
+        bcrypt.hash.restore();
+      });
+  });
+
+  it('error: User.save error', function() {
+    const userSave = sinon.stub(User.prototype, 'save');
+    userSave.rejects({error: "Error"});
+
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "Amith Raravi",
+        "email": "amith.raravi1@gmail.com",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(404)
+      .then(response => {
+        expect(response.body.email).to.equal('There was a problem, please try again!');
+        User.prototype.save.restore();
+      });
+  });
+
+  it('error: email already exists', function() {
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "Amith Raravi",
+        "email": "amith.raravi@gmail.com",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.email).to.equal('Email already exists');
+      });
+  });
+
+  it('validation error: name field is required', function() {
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "",
+        "email": "amith.raravi@gmail.com",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.name).to.equal('Name field is required');
+      });
+  });
+
+  it('validation error: email field is required', function() {
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "Amith Raravi",
+        "email": "",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.email).to.equal('Email field is required');
+      });
+  });
+
+  it('validation error: email is invalid', function() {
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "Amith Raravi",
+        "email": "amith.raravigmail.com",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.email).to.equal('Email is invalid');
+      });
+  });
+
+  it('validation error: password field is required', function() {
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "Amith Raravi",
+        "email": "amith.raravi@gmail.com",
+        "password": "",
+        "password2": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.password).to.equal('Password field is required');
+      });
+  });
+
+  it('validation error: password must be at least 6 characters', function() {
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "Amith Raravi",
+        "email": "amith.raravi@gmail.com",
+        "password": "DmN",
+        "password2": "DmN"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.password).to.equal('Password must be at least 6 characters');
+      });
+  });
+
+  it('validation error: password2 field is required', function() {
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "Amith Raravi",
+        "email": "amith.raravi@gmail.com",
+        "password": "DmNcMZKa488WiBy",
+        "password2": ""})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.password2).to.equal('Confirm password field is required');
+      });
+  });
+
+  it('validation error: passwords must match', function() {
+    return request(app)
+      .post('/api/users/register')
+      .send({
+        "name": "Amith Raravi",
+        "email": "amith.raravi@gmail.com",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZ"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.password2).to.equal('Passwords must match');
+      });
+  });
+});
 
 describe('POST /login', function() {
-  before(function() {
-    console.log("  before");
-  });
-
-  after(function() {
-    mongoose.disconnect();
-    console.log("  after: disconnected DB");
-  });
-
   it('success: responds with json', function() {
     return request(app)
       .post('/api/users/login')
@@ -22,9 +243,12 @@ describe('POST /login', function() {
       .expect('Content-Type', /json/)
       .expect(200)
       .then(response => {
+        let token = response.body.token.slice(7);
         let tokenDecoded = jwtDecode(response.body.token);
         expect(response.body.success).to.equal(true);
         expect(tokenDecoded.name).to.equal('Amith Raravi');
+        // Delete session
+        deleteSession(token);
       });
   });
 
@@ -85,6 +309,138 @@ describe('POST /login', function() {
       .expect(400)
       .then(response => {
         expect(response.body.password).to.equal('Password field is required');
+      });
+  });
+});
+
+describe('POST /forgotpassword', function() {
+  it('success: responds with email', function() {
+    this.timeout(5000);
+    // Without this stub, mail is sent every time!
+    const transporter = sinon.stub(nodemailer, 'createTransport');
+    transporter.returns({
+      sendMail: (mailOptions) => Promise.resolve({
+        accepted: [ 'amith.raravi@gmail.com' ],
+        rejected: [],
+        envelopeTime: 218,
+        messageTime: 1326,
+        messageSize: 722,
+        response: '250 2.0.0 OK  1585181557 z16sm901791wrr.56 - gsmtp',
+        envelope: { from: 'notes-app@gmail.com', to: [ 'amith.raravi@gmail.com' ] },
+        messageId: '<2eb7d96b-e5d9-9b2d-8a3a-1d1bd1301fe6@gmail.com>'
+      })
+    });
+
+    return request(app)
+      .post('/api/users/forgotpassword')
+      .send({"email": "amith.raravi@gmail.com"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        expect(response.body.emailsent).to.equal('The reset email has been sent, please check your inbox!');
+        nodemailer.createTransport.restore();
+      });
+  });
+
+  it('error: email sending failed', function() {
+    this.timeout(5000);
+    // Without this stub, mail is sent every time!
+    const transporter = sinon.stub(nodemailer, 'createTransport');
+    transporter.returns({
+      sendMail: (mailOptions) => Promise.reject({
+        error: "Email couldn't be sent"
+      })
+    });
+
+    return request(app)
+      .post('/api/users/forgotpassword')
+      .send({"email": "amith.raravi@gmail.com"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(404)
+      .then(response => {
+        expect(response.body.email).to.equal("The reset email couldn't be sent, please try again!");
+        nodemailer.createTransport.restore();
+      });
+  });
+
+  it('error: bcrypt hashing failed', function() {
+    this.timeout(5000);
+    const bcryptHash = sinon.stub(bcrypt, 'hash');
+    bcryptHash.callsFake((p1, p2, cb) => cb("Error"));
+
+    return request(app)
+      .post('/api/users/forgotpassword')
+      .send({"email": "amith.raravi@gmail.com"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(404)
+      .then(response => {
+        expect(response.body.email).to.equal("The reset email couldn't be sent, please try again!");
+        bcrypt.hash.restore();
+      });
+  });
+
+  it('error: email not found', function() {
+    return request(app)
+      .post('/api/users/forgotpassword')
+      .send({"email": "amith.raravi1@gmail.com"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(404)
+      .then(response => {
+        expect(response.body.email).to.equal('Email not found');
+      });
+  });
+
+  it('validation error: email field is required', function() {
+    return request(app)
+      .post('/api/users/forgotpassword')
+      .send({"email": ""})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.email).to.equal('Email field is required');
+      });
+  });
+
+  it('validation error: email is invalid', function() {
+    return request(app)
+      .post('/api/users/forgotpassword')
+      .send({"email": "amith.raravi1gmail.com"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.email).to.equal('Email is invalid');
+      });
+  });
+});
+
+describe('POST /logout', function() {
+  it('success: logs off', function() {
+    return request(app)
+      .post('/api/users/logout')
+      .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVlNWVkY2E0M2FhOWRjNTg3NTAzZTFiNCIsIm5hbWUiOiJBbWl0aCBSYXJhdmkiLCJpYXQiOjE1ODUxOTcxNzEsImV4cCI6MTYxNjc1NDA5N30.4z8q_gKxZM8edbCeKLOYpBNEc-YB9cXvdM5TI0lDSCQ')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        expect(response.body.logoff).to.equal('Logged off');
+      });
+  });
+});
+
+describe('GET /resetpassword', function() {
+  it('success: responds with HTML', function() {
+    return request(app)
+      .get('/resetpassword')
+      .expect('Content-Type', /text\/html/)
+      .expect(200)
+      .then(response => {
+        expect(response.headers['content-type']).to.equal('text/html; charset=UTF-8');
+        expect(response.headers['content-length']).to.equal('11330');
       });
   });
 });
