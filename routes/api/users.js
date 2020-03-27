@@ -50,9 +50,8 @@ router.post("/register", (req, res) => {
       // The top result on Google, the tutorial from scotch.io, also uses bcrypt with a lesser cost factor of 8. Both of these are small, but 8 is really small. Most bcrypt libraries these days use 12. The cost factor of 8 was for administrator accounts eighteen years ago when the original bcrypt paper was released.
       bcrypt.genSalt(12, (err, salt) => {
         bcrypt.hash(newUser.password, salt, (err, hash) => {
-          if (err)
-          {
-            console.error('    bcrypt hashing error: ', err);
+          if (err) {
+            console.error('bcrypt hashing error: ', err);
             return res.status(404).json({email: "There was a problem, please try again!"});
           }
           newUser.password = hash;
@@ -60,7 +59,7 @@ router.post("/register", (req, res) => {
             .save()
             .then(user => res.json({createduser: "New user registered successfully!"}))
             .catch(err => {
-              console.log(err);
+              console.log('MongoDB new user save error: ', err);
               res.status(404).json({email: "There was a problem, please try again!"});
             });
         });
@@ -163,9 +162,8 @@ router.post("/forgotpassword", (req, res) => {
     // hash the Reset token
     bcrypt.genSalt(12, (err, salt) => {
       bcrypt.hash(user.resetPasswordToken, salt, (err, hash) => {
-        if (err)
-        {
-          console.error('    bcrypt hashing error: ', err);
+        if (err) {
+          console.error('bcrypt hashing error: ', err);
           return res.status(404).json({email: "The reset email couldn't be sent, please try again!"});
         }
         user.resetPasswordToken = hash;
@@ -195,11 +193,11 @@ router.post("/forgotpassword", (req, res) => {
           // Send mail
           transporter.sendMail(mailOptions)
             .then(response => {
-              console.log('here is the response: ', response);
+              console.log('sendMail success: ', response);
               res.status(200).json({emailsent: 'The reset email has been sent, please check your inbox!'});
             })
             .catch(err => {
-              console.error('there was an error: ', err);
+              console.error('sendMail error: ', err);
               res.status(404).json({email: "The reset email couldn't be sent, please try again!"});
             });
         });
@@ -245,7 +243,10 @@ router.post("/resetpassword", (req, res) => {
         // hash the new password
         bcrypt.genSalt(12, (err, salt) => {
           bcrypt.hash(newPassword, salt, (err, hash) => {
-            if (err) throw err;
+            if (err) {
+              console.error("bcrypt hashing error: ", err);
+              return res.status(404).json({resetcode: "Password couldn't be changed, please try again!"});
+            }
             user.password = hash;
             user.resetPasswordToken = undefined;
             user.resetPasswordExpires = undefined;
@@ -255,7 +256,10 @@ router.post("/resetpassword", (req, res) => {
               .then(user => {
                 return res.json({success: "Password changed successfully!"});
               })
-              .catch(err => console.log(err));
+              .catch(err => {
+                console.log("MongoDB save password error: ", err);
+                return res.status(400).json({resetcode: "Password couldn't be changed, please try again!"});
+              });
           });
         });
       } else {

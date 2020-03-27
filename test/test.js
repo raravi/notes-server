@@ -316,6 +316,8 @@ describe('POST /login', function() {
 describe('POST /forgotpassword', function() {
   it('success: responds with email', function() {
     this.timeout(5000);
+    const userSave = sinon.stub(User.prototype, 'save');
+    userSave.resolves({email: "amith.raravi@gmail.com"});
     // Without this stub, mail is sent every time!
     const transporter = sinon.stub(nodemailer, 'createTransport');
     transporter.returns({
@@ -340,11 +342,14 @@ describe('POST /forgotpassword', function() {
       .then(response => {
         expect(response.body.emailsent).to.equal('The reset email has been sent, please check your inbox!');
         nodemailer.createTransport.restore();
+        User.prototype.save.restore();
       });
   });
 
   it('error: email sending failed', function() {
     this.timeout(5000);
+    const userSave = sinon.stub(User.prototype, 'save');
+    userSave.resolves({email: "amith.raravi@gmail.com"});
     // Without this stub, mail is sent every time!
     const transporter = sinon.stub(nodemailer, 'createTransport');
     transporter.returns({
@@ -362,6 +367,7 @@ describe('POST /forgotpassword', function() {
       .then(response => {
         expect(response.body.email).to.equal("The reset email couldn't be sent, please try again!");
         nodemailer.createTransport.restore();
+        User.prototype.save.restore();
       });
   });
 
@@ -415,6 +421,305 @@ describe('POST /forgotpassword', function() {
       .expect(400)
       .then(response => {
         expect(response.body.email).to.equal('Email is invalid');
+      });
+  });
+});
+
+describe('POST /resetpassword', function() {
+  it('success: password changed successfully', function() {
+    const userFindOne = sinon.stub(User, 'findOne');
+    userFindOne.resolves({
+      _id: '5e5edca43aa9dc587503e1b4',
+      name: 'Amith Raravi',
+      email: 'amith.raravi@gmail.com',
+      password: '$2a$12$.TdDUPO04ICoSdHmVy90x.rBptpYykbAFd4bTqxrEuutJQR2zjV5K',
+      date: new Date('2020-03-03T22:39:32.371Z'),
+      __v: 0,
+      resetPasswordExpires: new Date('2220-03-26T03:26:04.136Z'),
+      resetPasswordToken: '$2a$12$5z5/4rfoZHi7y4nrtvtHzuWgA8d9UnCLQpydhHLvm3hS.gpo9akkW',
+      save: () => {
+        return Promise.resolve({
+          _id: '5e5edca43aa9dc587503e1b4',
+          name: 'Amith Raravi',
+          email: 'amith.raravi@gmail.com',
+          password: '$2a$12$.TdDUPO04ICoSdHmVy90x.rBptpYykbAFd4bTqxrEuutJQR2zjV5K',
+          date: new Date('2020-03-03T22:39:32.371Z'),
+          __v: 0,
+          resetPasswordExpires: new Date('2220-03-26T03:26:04.136Z'),
+          resetPasswordToken: '$2a$12$5z5/4rfoZHi7y4nrtvtHzuWgA8d9UnCLQpydhHLvm3hS.gpo9akkW'
+        })
+      }
+    });
+
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.com",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        expect(response.body.success).to.equal('Password changed successfully!');
+        User.findOne.restore();
+      });
+  });
+
+  it('error: bcrypt hashing error', function() {
+    const userFindOne = sinon.stub(User, 'findOne');
+    userFindOne.resolves({
+      _id: '5e5edca43aa9dc587503e1b4',
+      name: 'Amith Raravi',
+      email: 'amith.raravi@gmail.com',
+      password: '$2a$12$.TdDUPO04ICoSdHmVy90x.rBptpYykbAFd4bTqxrEuutJQR2zjV5K',
+      date: new Date('2020-03-03T22:39:32.371Z'),
+      __v: 0,
+      resetPasswordExpires: new Date('2220-03-26T03:26:04.136Z'),
+      resetPasswordToken: '$2a$12$5z5/4rfoZHi7y4nrtvtHzuWgA8d9UnCLQpydhHLvm3hS.gpo9akkW'
+    });
+
+    const bcryptCompare = sinon.stub(bcrypt, 'compare');
+    bcryptCompare.resolves(true);
+
+    const bcryptHash = sinon.stub(bcrypt, 'hash');
+    bcryptHash.callsFake((p1, p2, cb) => cb("Error"));
+
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.com",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(404)
+      .then(response => {
+        expect(response.body.resetcode).to.equal("Password couldn't be changed, please try again!");
+        bcrypt.hash.restore();
+        bcrypt.compare.restore();
+        User.findOne.restore();
+      });
+  });
+
+  it('error: password saving to DB failed', function() {
+    const userFindOne = sinon.stub(User, 'findOne');
+    userFindOne.resolves({
+      _id: '5e5edca43aa9dc587503e1b4',
+      name: 'Amith Raravi',
+      email: 'amith.raravi@gmail.com',
+      password: '$2a$12$.TdDUPO04ICoSdHmVy90x.rBptpYykbAFd4bTqxrEuutJQR2zjV5K',
+      date: new Date('2020-03-03T22:39:32.371Z'),
+      __v: 0,
+      resetPasswordExpires: new Date('2220-03-26T03:26:04.136Z'),
+      resetPasswordToken: '$2a$12$5z5/4rfoZHi7y4nrtvtHzuWgA8d9UnCLQpydhHLvm3hS.gpo9akkW',
+      save: () => {
+        return Promise.reject({error: "Error"})
+      }
+    });
+
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.com",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.resetcode).to.equal("Password couldn't be changed, please try again!");
+        User.findOne.restore();
+      });
+  });
+
+  it('error: email not found', function() {
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.co",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(404)
+      .then(response => {
+        expect(response.body.email).to.equal('Email not found');
+      });
+  });
+
+  it('error: reset code has expired', function() {
+    const userFindOne = sinon.stub(User, 'findOne');
+    userFindOne.resolves({
+      _id: '5e5edca43aa9dc587503e1b4',
+      name: 'Amith Raravi',
+      email: 'amith.raravi@gmail.com',
+      password: '$2a$12$.TdDUPO04ICoSdHmVy90x.rBptpYykbAFd4bTqxrEuutJQR2zjV5K',
+      date: new Date('2020-03-03T22:39:32.371Z'),
+      __v: 0,
+      resetPasswordExpires: new Date('2020-03-26T03:26:04.136Z'),
+      resetPasswordToken: '$2a$12$5z5/4rfoZHi7y4nrtvtHzuWgA8d9UnCLQpydhHLvm3hS.gpo9akkW',
+      save: () => {}
+    });
+
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.com",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {console.log(response.body);
+        expect(response.body.resetcode).to.equal('Reset code has expired');
+        User.findOne.restore();
+      });
+  });
+
+  it('error: reset code is invalid', function() {
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.com",
+        "resetcode": "8c4e65",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.resetcode).to.equal('Reset code is invalid');
+      });
+  });
+
+  it('validation error: email field is required', function() {
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.email).to.equal('Email field is required');
+      });
+  });
+
+  it('validation error: email is invalid', function() {
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravigmail.com",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.email).to.equal('Email is invalid');
+      });
+  });
+
+  it('validation error: reset code is required', function() {
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.com",
+        "resetcode": "",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.resetcode).to.equal('Reset code is required');
+      });
+  });
+
+  it('validation error: password field is required', function() {
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.com",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.password).to.equal('Password field is required');
+      });
+  });
+
+  it('validation error: password must be at least 6 characters', function() {
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.com",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "Dm",
+        "password2": "DmNcMZKa488WiBy"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.password).to.equal('Password must be at least 6 characters');
+      });
+  });
+
+  it('validation error: confirm password field is required', function() {
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.com",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "DmNcMZKa488WiBy",
+        "password2": ""
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.password2).to.equal('Confirm password field is required');
+      });
+  });
+
+  it('validation error: passwords must match', function() {
+    return request(app)
+      .post('/api/users/resetpassword')
+      .send({
+        "email": "amith.raravi@gmail.com",
+        "resetcode": "e1ca0470bd9c356a7c5ec0e89c246f9b",
+        "password": "DmNcMZKa488WiBy",
+        "password2": "DmN"
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.password2).to.equal('Passwords must match');
       });
   });
 });
