@@ -1,420 +1,91 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
-const crypto = require('crypto');
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
-const keys = require("../../config/keys");
+const { login,
+        register,
+        forgotPassword,
+        resetPassword,
+        logout,
+        syncNote,
+        sendAllNotes,
+        newNote,
+        deleteNote } = require("./functions");
 
 // Passport middleware
 router.use(passport.initialize());
 require("../../config/passport")(passport);
 
 /**
- * Load input validation
- */
-const validateRegisterInput = require("../../validation/register");
-const validateLoginInput = require("../../validation/login");
-const validateForgotPasswordInput = require("../../validation/forgotpassword");
-const validateResetPasswordInput = require("../../validation/resetpassword");
-
-/**
- * Load User / Note models
- */
-const User = require("../../models/User");
-const Note = require("../../models/Note");
-
-/**
  * @route POST api/users/register
  * @desc Register user
  * @access Public
  */
-router.post("/register", (req, res) => {
-  // Form validation
-  const { errors, isValid } = validateRegisterInput(req.body);
-  // Check validation
-  if (!isValid) {
-    return res.status(400).json(errors);
-  }
-  User.findOne({ email: req.body.email }).then(user => {
-    if (user) {
-      return res.status(400).json({ email: "Email already exists" });
-    } else {
-      const newUser = new User({
-        name: req.body.name,
-        email: req.body.email,
-        password: req.body.password
-      });
-      // Hash password before saving in database
-      // The top result on Google, the tutorial from scotch.io, also uses bcrypt with a lesser cost factor of 8. Both of these are small, but 8 is really small. Most bcrypt libraries these days use 12. The cost factor of 8 was for administrator accounts eighteen years ago when the original bcrypt paper was released.
-      bcrypt.genSalt(12, (err, salt) => {
-        bcrypt.hash(newUser.password, salt, (err, hash) => {
-          if (err) {
-            console.error('bcrypt hashing error: ', err);
-            return res.status(404).json({email: "There was a problem, please try again!"});
-          }
-          newUser.password = hash;
-          newUser
-            .save()
-            .then(user => res.json({createduser: "New user registered successfully!"}))
-            .catch(err => {
-              console.log('MongoDB new user save error: ', err);
-              res.status(404).json({email: "There was a problem, please try again!"});
-            });
-        });
-      });
-    }
-  });
-});
+router.post("/register", register);
 
 /**
  * @route POST api/users/login
  * @desc Login user and return JWT token
  * @access Public
  */
-router.post("/login", (req, res) => {
-  // Form validation
-  const { errors, isValid } = validateLoginInput(req.body);
-  // Check validation
-  if (!isValid) {
-    return res.status(400).json(errors);
-  }
-  const email = req.body.email;
-  const password = req.body.password;
-  // Find user by email
-  User.findOne({ email }).then(user => {
-    // Check if user exists
-    if (!user) {
-      return res.status(404).json({ email: "Email not found" });
-    }
-    // Check password
-    bcrypt.compare(password, user.password).then(isMatch => {
-      if (isMatch) {
-        // User matched
-        // Create JWT Payload
-        const payload = {
-          id: user.id,
-          name: user.name
-        };
-        // Sign token
-        // JWT is not encrypted!
-        jwt.sign(
-          payload,
-          keys.secretOrKey,
-          {
-            expiresIn: 31556926 // 1 year in seconds
-          },
-          (err, token) => {
-            req.session.token = token;
-            Note.find({userid: user.id}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
-              let notes = [];
-              req.session.synceddate = Date.now();
-              docs.forEach(doc =>
-                notes.push({
-                  id: doc.id,
-                  note: doc.note,
-                  modifieddate: doc.modifieddate
-                })
-              );
-              res.json({
-                success: true,
-                token: "Bearer " + token,
-                notes: notes
-              });
-            });
-          }
-        );
-      } else {
-        return res
-          .status(400)
-          .json({ password: "Password incorrect" });
-      }
-    });
-  });
-});
+router.post("/login", login);
 
 /**
  * @route POST api/users/forgotpassword
  * @desc Get valid email from user and send a RESET mail to the registered email.
  * @access Public
  */
-router.post("/forgotpassword", (req, res) => {
-  // Form validation
-  const { errors, isValid } = validateForgotPasswordInput(req.body);
-  // Check validation
-  if (!isValid) {
-    return res.status(400).json(errors);
-  }
-  const email = req.body.email;
-  // Find user by email
-  User.findOne({ email }).then(user => {
-    // Check if user exists
-    if (!user) {
-      return res.status(404).json({ email: "Email not found" });
-    }
-
-    // Generate random string
-    const randomString = crypto.randomBytes(16).toString('hex');
-    user.resetPasswordToken = randomString.toString();
-    user.resetPasswordExpires = new Date(Date.now() + 3600000);
-
-    // hash the Reset token
-    bcrypt.genSalt(12, (err, salt) => {
-      bcrypt.hash(user.resetPasswordToken, salt, (err, hash) => {
-        if (err) {
-          console.error('bcrypt hashing error: ', err);
-          return res.status(404).json({email: "The reset email couldn't be sent, please try again!"});
-        }
-        user.resetPasswordToken = hash;
-
-        // Save the user to DB
-        user.save().then((user) => {
-          const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-              user: keys.email,
-              pass: keys.password,
-            },
-          });
-
-          const mailOptions = {
-            from: 'notes-app@gmail.com',
-            to: `${user.email}`,
-            subject: 'Link To Reset Password',
-            text:
-              'You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\n'
-              + 'Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it:\n\n'
-              + `http://localhost:8000/resetpassword\n\n`
-              + `Reset Code: ${randomString}\n\n`
-              + 'If you did not request this, please ignore this email and your password will remain unchanged.\n',
-          };
-
-          // Send mail
-          transporter.sendMail(mailOptions)
-            .then(response => {
-              console.log('sendMail success: ', response);
-              res.status(200).json({emailsent: 'The reset email has been sent, please check your inbox!'});
-            })
-            .catch(err => {
-              console.error('sendMail error: ', err);
-              res.status(404).json({email: "The reset email couldn't be sent, please try again!"});
-            });
-        });
-      });
-    });
-  });
-});
+router.post("/forgotpassword", forgotPassword);
 
 /**
  * @route POST api/users/resetpassword
  * @desc Get valid RESET code, new password from user and update the password in DB.
  * @access Public
  */
-router.post("/resetpassword", (req, res) => {
-  // Form validation
-  const { errors, isValid } = validateResetPasswordInput(req.body);
-  // Check validation
-  if (!isValid) {
-    return res.status(400).json(errors);
-  }
-  const email = req.body.email;
-  const resetCode = req.body.resetcode;
-  const newPassword = req.body.password;
-  // Find user by email
-  User.findOne({ email: email }).then(user => {
-    // Check if user exists
-    if (!user) {
-      return res.status(404).json({ email: "Email not found" });
-    }
-
-    // Check RESET code
-    bcrypt.compare(resetCode, user.resetPasswordToken).then(isMatch => {
-      if (isMatch) {
-        // Token matched
-        if (user.resetPasswordExpires < Date.now()) {
-          user.resetPasswordToken = undefined;
-          user.resetPasswordExpires = undefined;
-          user.save();
-
-          return res.status(400).json({ resetcode: "Reset code has expired" });
-        }
-
-        // hash the new password
-        bcrypt.genSalt(12, (err, salt) => {
-          bcrypt.hash(newPassword, salt, (err, hash) => {
-            if (err) {
-              console.error("bcrypt hashing error: ", err);
-              return res.status(404).json({resetcode: "Password couldn't be changed, please try again!"});
-            }
-            user.password = hash;
-            user.resetPasswordToken = undefined;
-            user.resetPasswordExpires = undefined;
-
-            // save the user to DB
-            user.save()
-              .then(user => {
-                return res.json({success: "Password changed successfully!"});
-              })
-              .catch(err => {
-                console.log("MongoDB save password error: ", err);
-                return res.status(400).json({resetcode: "Password couldn't be changed, please try again!"});
-              });
-          });
-        });
-      } else {
-        return res
-          .status(400)
-          .json({ resetcode: "Reset code is invalid" });
-      }
-    });
-
-  });
-});
+router.post("/resetpassword", resetPassword);
 
 /**
  * @route POST api/users/logout
  * @desc Destroy the session upon logout.
  * @access Public
  */
-router.post("/logout", passport.authenticate('jwt', { session: false }), (req, res) => {
-  req.session.destroy(err => {
-    if (err)
-      console.log(err);
-    else {
-      return res.status(200).json({ logoff: "Logged off" });
-    }
-  });
-});
+router.post("/logout",
+            passport.authenticate('jwt', { session: false }),
+            logout);
 
 /**
  * @route POST api/users/sync
  * @desc Sync the note to DB.
  * @access Public
  */
-router.post("/sync", (req, res) => {
-  if (req.session.token && req.session.token === req.body.token.slice(7)) {
-    Note.findById(req.body.noteid).then(note => {
-      // Check if note exists
-      if (!note) {
-        return res.status(404).json({ error: "Note not found" });
-      }
-      if (note.userid === req.body.userid) {
-        let modifiedDateOfNote = req.session[req.body.noteid] === undefined
-                                ? req.session.synceddate
-                                : req.session[req.body.noteid];
-
-        if (note.modifiedsession !== req.session.id && note.modifieddate > modifiedDateOfNote) {
-          req.session[req.body.noteid] = note.modifieddate.getTime();
-          return res.json({
-            notemodified: "Note modified by another session",
-            note: note.note,
-            modifieddate: note.modifieddate
-          });
-        }
-
-        if (!req.body.notetext) {
-          return res.json({nochanges: "No changes"});
-        } else {
-          note.note = req.body.notetext;
-          note.modifieddate = Date.now();
-          note.modifiedsession = req.session.id;
-
-          // update the note in DB
-          note.save()
-            .then(note => {
-              return res.json({
-                success: "Note updated!",
-                modifieddate: note.modifieddate
-              });
-            })
-            .catch(err => console.log(err));
-        }
-      }
-    });
-  } else {
-    return res.status(404).json({ error: "Auth Error" });
-  }
-});
+router.post("/sync",
+            passport.authenticate('jwt', { session: false }),
+            syncNote);
 
 /**
  * @route POST api/users/sendall
  * @desc Send all the notes from DB.
  * @access Public
  */
-router.post("/sendall", (req, res) => {
-  if (req.session.token && req.session.token === req.body.token.slice(7)) {
-    Note.find({userid: req.body.userid}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
-      let notes = [];
-
-      docs.forEach(doc =>
-        notes.push({
-          id: doc.id,
-          note: doc.note,
-          modifieddate: doc.modifieddate
-        })
-      );
-      res.json({
-        success: true,
-        notes: notes
-      });
-    });
-  } else {
-    return res.status(404).json({ error: "Auth Error" });
-  }
-});
+router.post("/sendall",
+            passport.authenticate('jwt', { session: false }),
+            sendAllNotes);
 
 /**
  * @route POST api/users/new
- * @desc New the note to DB.
+ * @desc New note is saved to DB.
  * @access Public
  */
-router.post("/new", (req, res) => {
-  if (req.session.token && req.session.token === req.body.token.slice(7)) {
-    let date = Date.now();
-    const newNote = new Note({
-              userid: req.body.userid,
-              note: "# An awesome new note",
-              modifiedsession: req.session.id
-            });
-    newNote
-      .save()
-      .then(note => {
-        return res.json({
-          note: {
-            id: note.id,
-            note: note.note,
-            modifieddate: note.modifieddate,
-            createddate: note.createddate
-          }
-        });
-      })
-      .catch(err => {
-        console.log(err);
-        return res.status(400).json({error: "Adding to DB failed!"});
-      });
-  } else {
-    return res.status(404).json({ error: "Auth Error" });
-  }
-});
+router.post("/new",
+            passport.authenticate('jwt', { session: false }),
+            newNote);
 
 /**
  * @route POST api/users/delete
- * @desc Delete the note in DB.
+ * @desc Delete the selected note from DB.
  * @access Public
  */
-router.post("/delete", (req, res) => {
-  if (req.session.token && req.session.token === req.body.token.slice(7)) {
-    Note.findByIdAndRemove(req.body.noteid).then(() => {
-      return res.json({success: "Note deleted!"});
-    })
-    .catch(err => {
-      console.log(err);
-      return res.status(400).json({error: "Delete failed!"});
-    });
-  } else {
-    return res.status(404).json({ error: "Auth Error" });
-  }
-});
+router.post("/delete",
+            passport.authenticate('jwt', { session: false }),
+            deleteNote);
 
 module.exports = router;

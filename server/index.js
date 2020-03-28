@@ -1,5 +1,4 @@
 const passport = require("passport");
-const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const rateLimit = require("express-rate-limit");
 const cors = require('cors');
@@ -7,13 +6,13 @@ const path = require('path');
 const session = require('express-session');
 const MongoStore = require('connect-mongo')(session);
 const express = require('express');
+const mongooseConnection = require('./db');
 
 const app = express();
 const port = 8000;
 
 const users = require("../routes/api/users");
 const keys = require("../config/keys");
-const db = keys.mongoURI;
 
 // Enable CORS
 app.use(cors({
@@ -38,22 +37,12 @@ app.use(bodyParser.json());
 app.use(passport.initialize());
 require("../config/passport")(passport);
 
-// Connect to MongoDB
-mongoose
-  .connect(db, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useFindAndModify: false
-  })
-  .then(() => console.log("MongoDB successfully connected"))
-  .catch(err => console.log(err));
-
 // Session Middleware
 app.use(session({
   secret: keys.sessionSecret,
   saveUninitialized: false, // don't create session until something stored
   resave: false, //don't save session if unmodified
-  store: new MongoStore({ mongooseConnection: mongoose.connection })
+  store: new MongoStore({ mongooseConnection: mongooseConnection })
 }));
 
 // Routes

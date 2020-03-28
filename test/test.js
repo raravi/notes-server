@@ -6,7 +6,11 @@ const mongoose = require("mongoose");
 const jwtDecode = require('jwt-decode');
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
+const session = require('express-session');
+const { resetPassword, logout } = require("../routes/api/functions");
+
 const User = require("../models/User");
+const Note = require("../models/Note");
 const Session = require("./models/Session");
 
 function deleteSession(token) {
@@ -29,6 +33,8 @@ function deleteSession(token) {
       .catch(err => {
         console.log("    Delete failed!");
       });
+    } else {
+      console.log("    Couldn't find session to delete!");
     }
   });
 }
@@ -57,10 +63,10 @@ describe('POST /register', function() {
       .then(response => {
         expect(response.body.createduser).to.equal('New user registered successfully!');
         User.findOneAndRemove({email: 'amith.raravi1@gmail.com'}).then(() => {
-          console.log("    Note deleted!");
+          console.log("    User deleted!");
         })
         .catch(err => {
-          console.log("    Delete failed!", err);
+          console.log("    User delete failed!", err);
         });
       });
   });
@@ -735,6 +741,155 @@ describe('POST /logout', function() {
         expect(response.body.logoff).to.equal('Logged off');
       });
   });
+
+  it('error: session.destroy error', async function() {
+    const mockResponse = () => {
+      const res = {};
+      // replace the following () => res
+      // with your function stub/mock of choice
+      // making sure they still return `res`
+      // res.status = () => res;
+      // res.json = () => res;
+      res.status = sinon.stub().returns(res);
+      res.json = sinon.stub().returns(res);
+      return res;
+    };
+
+    const mockRequest = (sessionData) => {
+      return {
+        session: {
+          data: sessionData,
+          // destroy: (cb) => cb({error: "Error"}),
+          destroy: sinon.stub().callsFake((cb) => cb({error: "Error"}))
+        },
+      };
+    };
+
+    const req = mockRequest();
+    const res = mockResponse();
+    await logout(req, res);
+    sinon.assert.calledWith(res.status, 400);
+    sinon.assert.calledWith(res.json, { logoff: "There was an error, please try again!" });
+  });
+});
+
+describe('POST /sendall', function() {
+  let token;
+  before(function(done) {
+    request(app)
+      .post('/api/users/login')
+      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        token = response.body.token.slice(7);
+        let tokenDecoded = jwtDecode(response.body.token);
+        expect(response.body.success).to.equal(true);
+        expect(tokenDecoded.name).to.equal('Amith Raravi');
+        done();
+      });
+  });
+
+  after(function(done) {
+    // Delete session
+    deleteSession(token);
+    done();
+  });
+
+  it('success: notes sent', function() {
+    const notes = [{
+      id: "dummyid1",
+      note: "dummynote1",
+      modifieddate: "2020-03-03T22:39:32.371Z"
+    },{
+      id: "dummyid2",
+      note: "dummynote2",
+      modifieddate: "2020-03-03T22:39:32.371Z"
+    }];
+    const noteFind = sinon.stub(Note, 'find');
+    noteFind.resolves(notes);
+
+    return request(app)
+      .post('/api/users/sendall')
+      .send({
+        "userid": "dummyuser"
+      })
+      .set('Accept', 'application/json')
+      .set('Authorization', "Bearer " + token)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        expect(response.body.success).to.equal(true);
+        expect(response.body.notes).to.deep.equal(notes);
+        Note.find.restore();
+      });
+  });
+});
+
+describe('POST /delete', function() {
+  let token;
+  before(function(done) {
+    request(app)
+      .post('/api/users/login')
+      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        token = response.body.token.slice(7);
+        let tokenDecoded = jwtDecode(response.body.token);
+        expect(response.body.success).to.equal(true);
+        expect(tokenDecoded.name).to.equal('Amith Raravi');
+        done();
+      });
+  });
+
+  after(function(done) {
+    // Delete session
+    deleteSession(token);
+    done();
+  });
+
+  it('success: note deleted', function() {
+    const noteFindByIdAndRemove = sinon.stub(Note, 'findByIdAndRemove');
+    noteFindByIdAndRemove.resolves({});
+
+    return request(app)
+      .post('/api/users/delete')
+      .send({
+        "userid": "dummyuser",
+        "noteid": "dummynote"
+      })
+      .set('Accept', 'application/json')
+      .set('Authorization', "Bearer " + token)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        expect(response.body.success).to.equal('Note deleted!');
+        Note.findByIdAndRemove.restore();
+      });
+  });
+
+  it('error: delete failed', function() {
+    const noteFindByIdAndRemove = sinon.stub(Note, 'findByIdAndRemove');
+    noteFindByIdAndRemove.rejects({error: "Error"});
+
+    return request(app)
+      .post('/api/users/delete')
+      .send({
+        "userid": "dummyuser",
+        "noteid": "dummynote"
+      })
+      .set('Accept', 'application/json')
+      .set('Authorization', "Bearer " + token)
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.error).to.equal('Delete failed!');
+        Note.findByIdAndRemove.restore();
+      });
+  });
 });
 
 describe('GET /resetpassword', function() {
@@ -746,6 +901,69 @@ describe('GET /resetpassword', function() {
       .then(response => {
         expect(response.headers['content-type']).to.equal('text/html; charset=UTF-8');
         expect(response.headers['content-length']).to.equal('11330');
+      });
+  });
+});
+
+describe('Passport.js', function() {
+  let token;
+  before(function(done) {
+    request(app)
+      .post('/api/users/login')
+      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        token = response.body.token.slice(7);
+        let tokenDecoded = jwtDecode(response.body.token);
+        expect(response.body.success).to.equal(true);
+        expect(tokenDecoded.name).to.equal('Amith Raravi');
+        done();
+      });
+  });
+
+  after(function(done) {
+    // Delete session
+    deleteSession(token);
+    done();
+  });
+
+  it('User.findOne: error', function() {
+    const userFindOne = sinon.stub(User, 'findOne');
+    userFindOne.callsFake((p1, cb) => cb({error: "Error"}));
+
+    return request(app)
+      .post('/api/users/delete')
+      .send({
+        "userid": "dummyuser",
+        "noteid": "dummynote"
+      })
+      .set('Accept', 'application/json')
+      .set('Authorization', "Bearer " + token)
+      .expect(500)
+      .then(response => {
+        expect(response.res.statusMessage).to.equal("Internal Server Error");
+        User.findOne.restore();
+      });
+  });
+
+  it('User.findOne: No user found', function() {
+    const userFindOne = sinon.stub(User, 'findOne');
+    userFindOne.callsFake((p1, cb) => cb(null, null));
+
+    return request(app)
+      .post('/api/users/delete')
+      .send({
+        "userid": "dummyuser",
+        "noteid": "dummynote"
+      })
+      .set('Accept', 'application/json')
+      .set('Authorization', "Bearer " + token)
+      .expect(401)
+      .then(response => {
+        expect(response.text).to.equal("Unauthorized");
+        User.findOne.restore();
       });
   });
 });
