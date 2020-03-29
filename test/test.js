@@ -7,11 +7,29 @@ const jwtDecode = require('jwt-decode');
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const session = require('express-session');
-const { resetPassword, logout } = require("../routes/api/functions");
+const { resetPassword, logout, syncNote } = require("../routes/api/functions");
 
 const User = require("../models/User");
 const Note = require("../models/Note");
 const Session = require("./models/Session");
+
+let register = {
+      api: '/api/users/register',
+      json: null,
+      success: 'New user registered successfully!',
+      error: 'There was a problem, please try again!'
+    },
+    login = {
+      api: '/api/users/login',
+      json: null
+    },
+    forgotPassword = {
+      api: '/api/users/forgotPassword',
+      json: null,
+      resolve: {email: "amith.raravi@gmail.com"},
+      emailSuccess: 'The reset email has been sent, please check your inbox!',
+      emailError: "The reset email couldn't be sent, please try again!"
+    };
 
 function deleteSession(token) {
   Session.find({}, {}, { sort: { _id: 1 }}).then((sessions) => {
@@ -49,19 +67,24 @@ after(function() {
 });
 
 describe('POST /register', function() {
+  beforeEach(function() {
+    register.json = {
+      "name": "Amith Raravi",
+      "email": "amith.raravi1@gmail.com",
+      "password": "DmNcMZKa488WiBy",
+      "password2": "DmNcMZKa488WiBy"
+    };
+  });
+
   it('success: new user registered successfully', function() {
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "Amith Raravi",
-        "email": "amith.raravi1@gmail.com",
-        "password": "DmNcMZKa488WiBy",
-        "password2": "DmNcMZKa488WiBy"})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
       .then(response => {
-        expect(response.body.createduser).to.equal('New user registered successfully!');
+        expect(response.body.createduser).to.equal(register.success);
         User.findOneAndRemove({email: 'amith.raravi1@gmail.com'}).then(() => {
           console.log("    User deleted!");
         })
@@ -76,17 +99,13 @@ describe('POST /register', function() {
     bcryptHash.callsFake((p1, p2, cb) => cb("Error"));
 
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "Amith Raravi",
-        "email": "amith.raravi1@gmail.com",
-        "password": "DmNcMZKa488WiBy",
-        "password2": "DmNcMZKa488WiBy"})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(404)
       .then(response => {
-        expect(response.body.email).to.equal('There was a problem, please try again!');
+        expect(response.body.email).to.equal(register.error);
         bcrypt.hash.restore();
       });
   });
@@ -96,29 +115,22 @@ describe('POST /register', function() {
     userSave.rejects({error: "Error"});
 
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "Amith Raravi",
-        "email": "amith.raravi1@gmail.com",
-        "password": "DmNcMZKa488WiBy",
-        "password2": "DmNcMZKa488WiBy"})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(404)
       .then(response => {
-        expect(response.body.email).to.equal('There was a problem, please try again!');
+        expect(response.body.email).to.equal(register.error);
         User.prototype.save.restore();
       });
   });
 
   it('error: email already exists', function() {
+    register.json["email"] = "amith.raravi@gmail.com";
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "Amith Raravi",
-        "email": "amith.raravi@gmail.com",
-        "password": "DmNcMZKa488WiBy",
-        "password2": "DmNcMZKa488WiBy"})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -128,13 +140,10 @@ describe('POST /register', function() {
   });
 
   it('validation error: name field is required', function() {
+    register.json["name"] = "";
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "",
-        "email": "amith.raravi@gmail.com",
-        "password": "DmNcMZKa488WiBy",
-        "password2": "DmNcMZKa488WiBy"})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -144,13 +153,10 @@ describe('POST /register', function() {
   });
 
   it('validation error: email field is required', function() {
+    register.json["email"] = "";
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "Amith Raravi",
-        "email": "",
-        "password": "DmNcMZKa488WiBy",
-        "password2": "DmNcMZKa488WiBy"})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -160,13 +166,10 @@ describe('POST /register', function() {
   });
 
   it('validation error: email is invalid', function() {
+    register.json["email"] = "amith.raravi1gmail.com";
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "Amith Raravi",
-        "email": "amith.raravigmail.com",
-        "password": "DmNcMZKa488WiBy",
-        "password2": "DmNcMZKa488WiBy"})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -176,13 +179,10 @@ describe('POST /register', function() {
   });
 
   it('validation error: password field is required', function() {
+    register.json["password"] = "";
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "Amith Raravi",
-        "email": "amith.raravi@gmail.com",
-        "password": "",
-        "password2": "DmNcMZKa488WiBy"})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -192,13 +192,11 @@ describe('POST /register', function() {
   });
 
   it('validation error: password must be at least 6 characters', function() {
+    register.json["password"] = "DmN";
+    register.json["password2"] = "DmN";
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "Amith Raravi",
-        "email": "amith.raravi@gmail.com",
-        "password": "DmN",
-        "password2": "DmN"})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -208,13 +206,10 @@ describe('POST /register', function() {
   });
 
   it('validation error: password2 field is required', function() {
+    register.json["password2"] = "";
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "Amith Raravi",
-        "email": "amith.raravi@gmail.com",
-        "password": "DmNcMZKa488WiBy",
-        "password2": ""})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -224,13 +219,10 @@ describe('POST /register', function() {
   });
 
   it('validation error: passwords must match', function() {
+    register.json["password2"] = "DmNcMZ";
     return request(app)
-      .post('/api/users/register')
-      .send({
-        "name": "Amith Raravi",
-        "email": "amith.raravi@gmail.com",
-        "password": "DmNcMZKa488WiBy",
-        "password2": "DmNcMZ"})
+      .post(register.api)
+      .send(register.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -241,10 +233,17 @@ describe('POST /register', function() {
 });
 
 describe('POST /login', function() {
+  beforeEach(function() {
+    login.json = {
+      "email": "amith.raravi@gmail.com",
+      "password": "DmNcMZKa488WiBy",
+    };
+  });
+
   it('success: responds with json', function() {
     return request(app)
-      .post('/api/users/login')
-      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .post(login.api)
+      .send(login.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
@@ -259,9 +258,10 @@ describe('POST /login', function() {
   });
 
   it('error: email not found', function() {
+    login.json["email"] = "amith.raravi@gmail.co";
     return request(app)
-      .post('/api/users/login')
-      .send({"email": "amith.raravi@gmail.co", "password": "DmNcMZKa488WiBy"})
+      .post(login.api)
+      .send(login.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(404)
@@ -271,9 +271,10 @@ describe('POST /login', function() {
   });
 
   it('error: password incorrect', function() {
+    login.json["password"] = "DmNcMZKa488WiB";
     return request(app)
-      .post('/api/users/login')
-      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiB"})
+      .post(login.api)
+      .send(login.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -283,9 +284,10 @@ describe('POST /login', function() {
   });
 
   it('validation error: email is empty', function() {
+    login.json["email"] = "";
     return request(app)
-      .post('/api/users/login')
-      .send({"email": "", "password": "DmNcMZKa488WiBy"})
+      .post(login.api)
+      .send(login.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -295,9 +297,10 @@ describe('POST /login', function() {
   });
 
   it('validation error: email is invalid', function() {
+    login.json["email"] = "amith.raravigmail.com";
     return request(app)
-      .post('/api/users/login')
-      .send({"email": "amith.raravigmail.com", "password": "DmNcMZKa488WiBy"})
+      .post(login.api)
+      .send(login.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -307,9 +310,10 @@ describe('POST /login', function() {
   });
 
   it('validation error: password is empty', function() {
+    login.json["password"] = "";
     return request(app)
-      .post('/api/users/login')
-      .send({"email": "amith.raravi@gmail.com", "password": ""})
+      .post(login.api)
+      .send(login.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -320,10 +324,16 @@ describe('POST /login', function() {
 });
 
 describe('POST /forgotpassword', function() {
+  beforeEach(function() {
+    forgotPassword.json = {
+      "email": "amith.raravi@gmail.com"
+    };
+  });
+
   it('success: responds with email', function() {
     this.timeout(5000);
     const userSave = sinon.stub(User.prototype, 'save');
-    userSave.resolves({email: "amith.raravi@gmail.com"});
+    userSave.resolves(forgotPassword.resolve);
     // Without this stub, mail is sent every time!
     const transporter = sinon.stub(nodemailer, 'createTransport');
     transporter.returns({
@@ -340,13 +350,13 @@ describe('POST /forgotpassword', function() {
     });
 
     return request(app)
-      .post('/api/users/forgotpassword')
-      .send({"email": "amith.raravi@gmail.com"})
+      .post(forgotPassword.api)
+      .send(forgotPassword.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
       .then(response => {
-        expect(response.body.emailsent).to.equal('The reset email has been sent, please check your inbox!');
+        expect(response.body.emailsent).to.equal(forgotPassword.emailSuccess);
         nodemailer.createTransport.restore();
         User.prototype.save.restore();
       });
@@ -355,7 +365,7 @@ describe('POST /forgotpassword', function() {
   it('error: email sending failed', function() {
     this.timeout(5000);
     const userSave = sinon.stub(User.prototype, 'save');
-    userSave.resolves({email: "amith.raravi@gmail.com"});
+    userSave.resolves(forgotPassword.resolve);
     // Without this stub, mail is sent every time!
     const transporter = sinon.stub(nodemailer, 'createTransport');
     transporter.returns({
@@ -365,13 +375,13 @@ describe('POST /forgotpassword', function() {
     });
 
     return request(app)
-      .post('/api/users/forgotpassword')
-      .send({"email": "amith.raravi@gmail.com"})
+      .post(forgotPassword.api)
+      .send(forgotPassword.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(404)
       .then(response => {
-        expect(response.body.email).to.equal("The reset email couldn't be sent, please try again!");
+        expect(response.body.email).to.equal(forgotPassword.emailError);
         nodemailer.createTransport.restore();
         User.prototype.save.restore();
       });
@@ -383,21 +393,22 @@ describe('POST /forgotpassword', function() {
     bcryptHash.callsFake((p1, p2, cb) => cb("Error"));
 
     return request(app)
-      .post('/api/users/forgotpassword')
-      .send({"email": "amith.raravi@gmail.com"})
+      .post(forgotPassword.api)
+      .send(forgotPassword.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(404)
       .then(response => {
-        expect(response.body.email).to.equal("The reset email couldn't be sent, please try again!");
+        expect(response.body.email).to.equal(forgotPassword.emailError);
         bcrypt.hash.restore();
       });
   });
 
   it('error: email not found', function() {
+    forgotPassword.json["email"] = "amith.raravi1@gmail.com";
     return request(app)
-      .post('/api/users/forgotpassword')
-      .send({"email": "amith.raravi1@gmail.com"})
+      .post(forgotPassword.api)
+      .send(forgotPassword.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(404)
@@ -407,9 +418,10 @@ describe('POST /forgotpassword', function() {
   });
 
   it('validation error: email field is required', function() {
+    forgotPassword.json["email"] = "";
     return request(app)
-      .post('/api/users/forgotpassword')
-      .send({"email": ""})
+      .post(forgotPassword.api)
+      .send(forgotPassword.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -419,9 +431,10 @@ describe('POST /forgotpassword', function() {
   });
 
   it('validation error: email is invalid', function() {
+    forgotPassword.json["email"] = "amith.raravigmail.com";
     return request(app)
-      .post('/api/users/forgotpassword')
-      .send({"email": "amith.raravi1gmail.com"})
+      .post(forgotPassword.api)
+      .send(forgotPassword.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(400)
@@ -773,11 +786,327 @@ describe('POST /logout', function() {
   });
 });
 
+describe('POST /sync', function() {
+  let token;
+  before(function(done) {
+    request(app)
+      .post(login.api)
+      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        token = response.body.token.slice(7);
+        let tokenDecoded = jwtDecode(response.body.token);
+        expect(response.body.success).to.equal(true);
+        expect(tokenDecoded.name).to.equal('Amith Raravi');
+        done();
+      });
+  });
+
+  after(function(done) {
+    // Delete session
+    deleteSession(token);
+    done();
+  });
+
+  it('success: note modified by another session (synceddate)', async function() {
+    const note = {
+      id: "dummyid1",
+      userid: "dummyuser1",
+      note: "dummynote1",
+      modifieddate: new Date("2020-03-03T22:39:32.371Z"),
+      createddate: new Date("2020-03-03T22:39:32.371Z"),
+      modifiedsession: "dummysession1"
+    };
+
+    const noteFindById = sinon.stub(Note, 'findById');
+    noteFindById.resolves(note);
+
+    const mockResponse = () => {
+      const res = {};
+      // res.status = () => res;
+      // res.json = () => res;
+      res.status = sinon.stub().returns(res);
+      res.json = sinon.stub().returns(res);
+      return res;
+    };
+
+    const mockRequest = (sessionData) => {
+      return {
+        body: {
+          "userid": "dummyuser1",
+          "noteid": "dummynote1"
+        },
+        session: {
+          data: sessionData,
+          id: "dummysession2",
+          synceddate: new Date("2020-03-02T22:39:32.371Z"),
+        },
+      };
+    };
+
+    const req = mockRequest();
+    const res = mockResponse();
+    await syncNote(req, res);
+    sinon.assert.calledWith(res.json, {
+      notemodified: "Note modified by another session",
+      note: note.note,
+      modifieddate: note.modifieddate
+    });
+    Note.findById.restore();
+  });
+
+  it('success: note modified by another session (req.session[noteid])', async function() {
+    const note = {
+      id: "dummyid1",
+      userid: "dummyuser1",
+      note: "dummynote1",
+      modifieddate: new Date("2020-03-03T22:39:32.371Z"),
+      createddate: new Date("2020-03-03T22:39:32.371Z"),
+      modifiedsession: "dummysession1"
+    };
+
+    const noteFindById = sinon.stub(Note, 'findById');
+    noteFindById.resolves(note);
+
+    const mockResponse = () => {
+      const res = {};
+      // res.status = () => res;
+      // res.json = () => res;
+      res.status = sinon.stub().returns(res);
+      res.json = sinon.stub().returns(res);
+      return res;
+    };
+
+    const mockRequest = (sessionData) => {
+      return {
+        body: {
+          "userid": "dummyuser1",
+          "noteid": "dummynote1"
+        },
+        session: {
+          data: sessionData,
+          id: "dummysession2",
+          "dummynote1": new Date("2020-03-02T22:39:32.371Z"),
+          // synceddate: new Date("2020-03-02T22:39:32.371Z")
+        },
+      };
+    };
+
+    const req = mockRequest();
+    const res = mockResponse();
+    await syncNote(req, res);
+    sinon.assert.calledWith(res.json, {
+      notemodified: "Note modified by another session",
+      note: note.note,
+      modifieddate: note.modifieddate
+    });
+    Note.findById.restore();
+  });
+
+  it('success: no changes', async function() {
+    const note = {
+      id: "dummyid1",
+      userid: "dummyuser1",
+      note: "dummynote1",
+      modifieddate: new Date("2020-03-03T22:39:32.371Z"),
+      createddate: new Date("2020-03-03T22:39:32.371Z"),
+      modifiedsession: "dummysession1"
+    };
+
+    const noteFindById = sinon.stub(Note, 'findById');
+    noteFindById.resolves(note);
+
+    const mockResponse = () => {
+      const res = {};
+      // res.status = () => res;
+      // res.json = () => res;
+      res.status = sinon.stub().returns(res);
+      res.json = sinon.stub().returns(res);
+      return res;
+    };
+
+    const mockRequest = (sessionData) => {
+      return {
+        body: {
+          "userid": "dummyuser1",
+          "noteid": "dummynote1"
+        },
+        session: {
+          data: sessionData,
+          id: "dummysession1",
+          synceddate: new Date("2020-03-02T22:39:32.371Z")
+        },
+      };
+    };
+
+    const req = mockRequest();
+    const res = mockResponse();
+    await syncNote(req, res);
+    sinon.assert.calledWith(res.json, {nochanges: "No changes"});
+    Note.findById.restore();
+  });
+
+  it('success: note updated', function(done) {
+    const note = {
+      id: "dummyid1",
+      userid: "dummyuser1",
+      note: "dummynote1",
+      modifieddate: new Date("2020-03-03T22:39:32.371Z"),
+      createddate: new Date("2020-03-03T22:39:32.371Z"),
+      modifiedsession: "dummysession1",
+      save: sinon.stub().resolves({
+        modifieddate: new Date("2020-03-04T22:39:32.371Z")
+      })
+    };
+
+    const noteFindById = sinon.stub(Note, 'findById');
+    noteFindById.resolves(note);
+
+    const mockResponse = () => {
+      const res = {};
+      // res.status = () => res;
+      // res.json = () => res;
+      res.status = sinon.stub().returns(res);
+      // res.json = sinon.stub().returns(res);
+      res.json = sinon.stub().callsFake((body) => {
+        res.body = body;
+        return res;
+      });
+      return res;
+    };
+
+    const mockRequest = (sessionData) => {
+      return {
+        body: {
+          "userid": "dummyuser1",
+          "noteid": "dummynote1",
+          "notetext": "dummytext"
+        },
+        session: {
+          data: sessionData,
+          id: "dummysession1",
+          synceddate: new Date("2020-03-02T22:39:32.371Z")
+        },
+      };
+    };
+
+    const req = mockRequest();
+    const res = mockResponse();
+    syncNote(req, res);
+    done();
+    Note.findById.restore();
+    sinon.assert.calledWith(res.json, {
+      success: "Note updated!",
+      modifieddate: new Date("2020-03-04T22:39:32.371Z")
+    });
+  });
+
+  it('error: MongoDB save note error', function(done) {
+    const note = {
+      id: "dummyid1",
+      userid: "dummyuser1",
+      note: "dummynote1",
+      modifieddate: new Date("2020-03-03T22:39:32.371Z"),
+      createddate: new Date("2020-03-03T22:39:32.371Z"),
+      modifiedsession: "dummysession1",
+      save: sinon.stub().rejects({ error: "Error" })
+    };
+
+    const noteFindById = sinon.stub(Note, 'findById');
+    noteFindById.resolves(note);
+
+    const mockResponse = () => {
+      const res = {};
+      // res.status = () => res;
+      // res.json = () => res;
+      res.status = sinon.stub().returns(res);
+      // res.json = sinon.stub().returns(res);
+      res.json = sinon.stub().callsFake((body) => {
+        res.body = body;
+        return res;
+      });
+      return res;
+    };
+
+    const mockRequest = (sessionData) => {
+      return {
+        body: {
+          "userid": "dummyuser1",
+          "noteid": "dummynote1",
+          "notetext": "dummytext"
+        },
+        session: {
+          data: sessionData,
+          id: "dummysession1",
+          synceddate: new Date("2020-03-02T22:39:32.371Z")
+        },
+      };
+    };
+
+    const req = mockRequest();
+    const res = mockResponse();
+    syncNote(req, res);
+    done();
+    Note.findById.restore();
+    sinon.assert.calledWith(res.json, { error: "There was an error, note couldn't be updated!" });
+  });
+
+  it('error: note not found', function() {
+    const noteFindById = sinon.stub(Note, 'findById');
+    noteFindById.resolves(null);
+
+    return request(app)
+      .post('/api/users/sync')
+      .send({
+        "userid": "dummyuser",
+        "noteid": "dummynote"
+      })
+      .set('Accept', 'application/json')
+      .set('Authorization', "Bearer " + token)
+      .expect('Content-Type', /json/)
+      .expect(404)
+      .then(response => {
+        expect(response.body.error).to.equal("Note not found");
+        Note.findById.restore();
+      });
+  });
+
+  it('error: userid mismatch', function() {
+    const note = {
+      id: "dummyid1",
+      userid: "dummyuser1",
+      note: "dummynote1",
+      modifieddate: "2020-03-03T22:39:32.371Z",
+      createddate: "2020-03-03T22:39:32.371Z"
+    };
+
+    const noteFindById = sinon.stub(Note, 'findById');
+    noteFindById.resolves(note);
+
+    return request(app)
+      .post('/api/users/sync')
+      .send({
+        "userid": "dummyuser",
+        "noteid": "dummynote"
+      })
+      .set('Accept', 'application/json')
+      .set('Authorization', "Bearer " + token)
+      .expect('Content-Type', /json/)
+      .expect(404)
+      .then(response => {
+        expect(response.body.error).to.equal("Sync error");
+        Note.findById.restore();
+      });
+  });
+});
+
 describe('POST /sendall', function() {
   let token;
   before(function(done) {
     request(app)
-      .post('/api/users/login')
+      .post(login.api)
       .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -827,11 +1156,86 @@ describe('POST /sendall', function() {
   });
 });
 
+describe('POST /new', function() {
+  let token;
+  before(function(done) {
+    request(app)
+      .post(login.api)
+      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        token = response.body.token.slice(7);
+        let tokenDecoded = jwtDecode(response.body.token);
+        expect(response.body.success).to.equal(true);
+        expect(tokenDecoded.name).to.equal('Amith Raravi');
+        done();
+      });
+  });
+
+  after(function(done) {
+    // Delete session
+    deleteSession(token);
+    done();
+  });
+
+  it('success: new note sent', function() {
+    const note = {
+      id: "dummyid1",
+      note: "dummynote1",
+      modifieddate: "2020-03-03T22:39:32.371Z",
+      createddate: "2020-03-03T22:39:32.371Z"
+    };
+    const noteSave = sinon.stub(Note.prototype, 'save');
+    noteSave.resolves(note);
+
+    return request(app)
+      .post('/api/users/new')
+      .send({
+        "userid": "dummyuser"
+      })
+      .set('Accept', 'application/json')
+      .set('Authorization', "Bearer " + token)
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then(response => {
+        expect(response.body.note).to.deep.equal(note);
+        Note.prototype.save.restore();
+      });
+  });
+
+  it('error: adding to DB failed!', function() {
+    const note = {
+      id: "dummyid1",
+      note: "dummynote1",
+      modifieddate: "2020-03-03T22:39:32.371Z",
+      createddate: "2020-03-03T22:39:32.371Z"
+    };
+    const noteSave = sinon.stub(Note.prototype, 'save');
+    noteSave.rejects({error: "Error"});
+
+    return request(app)
+      .post('/api/users/new')
+      .send({
+        "userid": "dummyuser"
+      })
+      .set('Accept', 'application/json')
+      .set('Authorization', "Bearer " + token)
+      .expect('Content-Type', /json/)
+      .expect(400)
+      .then(response => {
+        expect(response.body.error).to.equal('Adding to DB failed!');
+        Note.prototype.save.restore();
+      });
+  });
+});
+
 describe('POST /delete', function() {
   let token;
   before(function(done) {
     request(app)
-      .post('/api/users/login')
+      .post(login.api)
       .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -909,7 +1313,7 @@ describe('Passport.js', function() {
   let token;
   before(function(done) {
     request(app)
-      .post('/api/users/login')
+      .post(login.api)
       .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)

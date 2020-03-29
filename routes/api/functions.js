@@ -18,7 +18,7 @@ const validateResetPasswordInput = require("../../validation/resetpassword");
 const User = require("../../models/User");
 const Note = require("../../models/Note");
 
-const register = async (req, res) => {
+const register = (req, res) => {
   // Form validation
   const { errors, isValid } = validateRegisterInput(req.body);
   // Check validation
@@ -56,7 +56,7 @@ const register = async (req, res) => {
   });
 };
 
-const login = async (req, res) => {
+const login = (req, res) => {
   // Form validation
   const { errors, isValid } = validateLoginInput(req.body);
   // Check validation
@@ -117,7 +117,7 @@ const login = async (req, res) => {
   });
 };
 
-const forgotPassword = async (req, res) => {
+const forgotPassword = (req, res) => {
   // Form validation
   const { errors, isValid } = validateForgotPasswordInput(req.body);
   // Check validation
@@ -184,7 +184,7 @@ const forgotPassword = async (req, res) => {
   });
 };
 
-const resetPassword = async (req, res) => {
+const resetPassword = (req, res) => {
   // Form validation
   const { errors, isValid } = validateResetPasswordInput(req.body);
   // Check validation
@@ -244,7 +244,7 @@ const resetPassword = async (req, res) => {
   });
 };
 
-const logout = async (req, res) => {
+const logout = (req, res) => {
   req.session.destroy(err => {
     if (err) {
       console.log(err);
@@ -256,7 +256,7 @@ const logout = async (req, res) => {
   });
 };
 
-const syncNote = async (req, res) => {
+const syncNote = (req, res) => {
   Note.findById(req.body.noteid).then(note => {
     // Check if note exists
     if (!note) {
@@ -291,13 +291,21 @@ const syncNote = async (req, res) => {
               modifieddate: note.modifieddate
             });
           })
-          .catch(err => console.log(err));
+          .catch(err => {
+            console.log("MongoDB save note error: ", err);
+            return res.status(400).json({
+              error: "There was an error, note couldn't be updated!"
+            });
+          });
       }
+    } else {
+      console.log("Error: there is a mismatch in userid!");
+      return res.status(404).json({ error: "Sync error" });
     }
   });
 };
 
-const sendAllNotes = async (req, res) => {
+const sendAllNotes = (req, res) => {
   Note.find({userid: req.body.userid}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
     let notes = [];
 
@@ -315,7 +323,7 @@ const sendAllNotes = async (req, res) => {
   });
 };
 
-const newNote = async (req, res) => {
+const newNote = (req, res) => {
   let date = Date.now();
   const newNote = new Note({
             userid: req.body.userid,
@@ -340,7 +348,7 @@ const newNote = async (req, res) => {
     });
 };
 
-const deleteNote = async (req, res) => {
+const deleteNote = (req, res) => {
   Note.findByIdAndRemove(req.body.noteid).then(() => {
     return res.json({success: "Note deleted!"});
   })
