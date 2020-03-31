@@ -13,6 +13,32 @@ const User = require("../models/User");
 const Note = require("../models/Note");
 const Session = require("./models/Session");
 
+const mockDateOther = new Date("2020-03-02T22:39:32.371Z"),
+      mockDateCreated = new Date("2020-03-03T22:39:32.371Z"),
+      mockDateExpired = new Date("2020-03-04T22:39:32.371Z"),
+      mockDateFuture = new Date("2220-03-26T22:39:32.371Z");
+
+const mockRequest = (sessionData) => {
+  return {
+    body: {
+      "userid": "dummyuser1",
+      "noteid": "dummynote1"
+    },
+    session: {
+      data: sessionData,
+    },
+  };
+};
+
+const mockResponse = () => {
+  const res = {};
+  // res.status = () => res;
+  // res.json = () => res;
+  res.status = sinon.stub().returns(res);
+  res.json = sinon.stub().returns(res);
+  return res;
+};
+
 let registerData = {
       api: '/api/users/register',
       json: null,
@@ -27,6 +53,16 @@ let registerData = {
       api: '/api/users/forgotpassword',
       json: null,
       resolve: {email: "amith.raravi@gmail.com"},
+      sendMailResolve: {
+        accepted: [ 'amith.raravi@gmail.com' ],
+        rejected: [],
+        envelopeTime: 218,
+        messageTime: 1326,
+        messageSize: 722,
+        response: '250 2.0.0 OK  1585181557 z16sm901791wrr.56 - gsmtp',
+        envelope: { from: 'notes-app@gmail.com', to: [ 'amith.raravi@gmail.com' ] },
+        messageId: '<2eb7d96b-e5d9-9b2d-8a3a-1d1bd1301fe6@gmail.com>'
+      },
       emailSuccess: 'The reset email has been sent, please check your inbox!',
       emailError: "The reset email couldn't be sent, please try again!"
     },
@@ -37,6 +73,60 @@ let registerData = {
       success: 'Password changed successfully!',
       error: "Password couldn't be changed, please try again!"
     },
+    logoutData = {
+      api: '/api/users/logout',
+      token: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVlNWVkY2E0M2FhOWRjNTg3NTAzZTFiNCIsIm5hbWUiOiJBbWl0aCBSYXJhdmkiLCJpYXQiOjE1ODUxOTcxNzEsImV4cCI6MTYxNjc1NDA5N30.4z8q_gKxZM8edbCeKLOYpBNEc-YB9cXvdM5TI0lDSCQ',
+      loggedOff: 'Logged off',
+      error: { logoff: "There was an error, please try again!" },
+    },
+    syncData = {
+      api: '/api/users/sync',
+      json: {
+        "userid": "dummyuser",
+        "noteid": "dummynote"
+      },
+      note: null,
+      errorNotUpdated: { error: "There was an error, note couldn't be updated!" },
+      errorNotFound: "Note not found",
+      errorNotSynced: "Sync error"
+    },
+    sendAllData = {
+      api: '/api/users/sendall',
+      json: {
+        "userid": "dummyuser"
+      },
+      notes: [{
+        id: "dummyid1",
+        note: "dummynote1",
+        modifieddate: "2020-03-03T22:39:32.371Z"
+      },{
+        id: "dummyid2",
+        note: "dummynote2",
+        modifieddate: "2020-03-03T22:39:32.371Z"
+      }]
+    },
+    newNoteData = {
+      api: '/api/users/new',
+      json: {
+        "userid": "dummyuser"
+      },
+      note: {
+        id: "dummyid1",
+        note: "dummynote1",
+        modifieddate: "2020-03-03T22:39:32.371Z",
+        createddate: "2020-03-03T22:39:32.371Z"
+      },
+      error: 'Adding to DB failed!'
+    },
+    deleteNoteData = {
+      api: '/api/users/delete',
+      json: {
+        "userid": "dummyuser",
+        "noteid": "dummynote"
+      },
+      success: 'Note deleted!',
+      error: 'Delete failed!'
+    }
     validationData = {
       emailExists: 'Email already exists',
       emailNotFound: 'Email not found',
@@ -51,6 +141,9 @@ let registerData = {
       resetCodeExpired: 'Reset code has expired',
       resetCodeInvalid: 'Reset code is invalid',
       resetCodeRequired: 'Reset code is required',
+    },
+    errorData = {
+      simpleError: { error: "Error" }
     };
 
 function deleteSession(token) {
@@ -120,7 +213,7 @@ describe('POST /register', function() {
 
   it('error: bcrypt hashing error', function() {
     const bcryptHash = sinon.stub(bcrypt, 'hash');
-    bcryptHash.callsFake((p1, p2, cb) => cb("Error"));
+    bcryptHash.callsFake((p1, p2, cb) => cb(errorData.simpleError));
 
     return request(app)
       .post(registerData.api)
@@ -136,7 +229,7 @@ describe('POST /register', function() {
 
   it('error: User.save error', function() {
     const userSave = sinon.stub(User.prototype, 'save');
-    userSave.rejects({error: "Error"});
+    userSave.rejects(errorData.simpleError);
 
     return request(app)
       .post(registerData.api)
@@ -152,6 +245,7 @@ describe('POST /register', function() {
 
   it('error: email already exists', function() {
     registerData.json["email"] = "amith.raravi@gmail.com";
+
     return request(app)
       .post(registerData.api)
       .send(registerData.json)
@@ -165,6 +259,7 @@ describe('POST /register', function() {
 
   it('validation error: name field is required', function() {
     registerData.json["name"] = "";
+
     return request(app)
       .post(registerData.api)
       .send(registerData.json)
@@ -178,6 +273,7 @@ describe('POST /register', function() {
 
   it('validation error: email field is required', function() {
     registerData.json["email"] = "";
+
     return request(app)
       .post(registerData.api)
       .send(registerData.json)
@@ -191,6 +287,7 @@ describe('POST /register', function() {
 
   it('validation error: email is invalid', function() {
     registerData.json["email"] = "amith.raravi1gmail.com";
+
     return request(app)
       .post(registerData.api)
       .send(registerData.json)
@@ -204,6 +301,7 @@ describe('POST /register', function() {
 
   it('validation error: password field is required', function() {
     registerData.json["password"] = "";
+
     return request(app)
       .post(registerData.api)
       .send(registerData.json)
@@ -218,6 +316,7 @@ describe('POST /register', function() {
   it('validation error: password must be at least 6 characters', function() {
     registerData.json["password"] = "DmN";
     registerData.json["password2"] = "DmN";
+
     return request(app)
       .post(registerData.api)
       .send(registerData.json)
@@ -231,6 +330,7 @@ describe('POST /register', function() {
 
   it('validation error: password2 field is required', function() {
     registerData.json["password2"] = "";
+
     return request(app)
       .post(registerData.api)
       .send(registerData.json)
@@ -244,6 +344,7 @@ describe('POST /register', function() {
 
   it('validation error: passwords must match', function() {
     registerData.json["password2"] = "DmNcMZ";
+
     return request(app)
       .post(registerData.api)
       .send(registerData.json)
@@ -283,6 +384,7 @@ describe('POST /login', function() {
 
   it('error: email not found', function() {
     loginData.json["email"] = "amith.raravi@gmail.co";
+
     return request(app)
       .post(loginData.api)
       .send(loginData.json)
@@ -296,6 +398,7 @@ describe('POST /login', function() {
 
   it('error: password incorrect', function() {
     loginData.json["password"] = "DmNcMZKa488WiB";
+
     return request(app)
       .post(loginData.api)
       .send(loginData.json)
@@ -309,6 +412,7 @@ describe('POST /login', function() {
 
   it('validation error: email is empty', function() {
     loginData.json["email"] = "";
+
     return request(app)
       .post(loginData.api)
       .send(loginData.json)
@@ -322,6 +426,7 @@ describe('POST /login', function() {
 
   it('validation error: email is invalid', function() {
     loginData.json["email"] = "amith.raravigmail.com";
+
     return request(app)
       .post(loginData.api)
       .send(loginData.json)
@@ -335,6 +440,7 @@ describe('POST /login', function() {
 
   it('validation error: password is empty', function() {
     loginData.json["password"] = "";
+
     return request(app)
       .post(loginData.api)
       .send(loginData.json)
@@ -361,16 +467,7 @@ describe('POST /forgotpassword', function() {
     // Without this stub, mail is sent every time!
     const transporter = sinon.stub(nodemailer, 'createTransport');
     transporter.returns({
-      sendMail: (mailOptions) => Promise.resolve({
-        accepted: [ 'amith.raravi@gmail.com' ],
-        rejected: [],
-        envelopeTime: 218,
-        messageTime: 1326,
-        messageSize: 722,
-        response: '250 2.0.0 OK  1585181557 z16sm901791wrr.56 - gsmtp',
-        envelope: { from: 'notes-app@gmail.com', to: [ 'amith.raravi@gmail.com' ] },
-        messageId: '<2eb7d96b-e5d9-9b2d-8a3a-1d1bd1301fe6@gmail.com>'
-      })
+      sendMail: (mailOptions) => Promise.resolve(forgotPasswordData.sendMailResolve)
     });
 
     return request(app)
@@ -414,7 +511,7 @@ describe('POST /forgotpassword', function() {
   it('error: bcrypt hashing failed', function() {
     this.timeout(5000);
     const bcryptHash = sinon.stub(bcrypt, 'hash');
-    bcryptHash.callsFake((p1, p2, cb) => cb("Error"));
+    bcryptHash.callsFake((p1, p2, cb) => cb(errorData.simpleError));
 
     return request(app)
       .post(forgotPasswordData.api)
@@ -430,6 +527,7 @@ describe('POST /forgotpassword', function() {
 
   it('error: email not found', function() {
     forgotPasswordData.json["email"] = "amith.raravi1@gmail.com";
+
     return request(app)
       .post(forgotPasswordData.api)
       .send(forgotPasswordData.json)
@@ -443,6 +541,7 @@ describe('POST /forgotpassword', function() {
 
   it('validation error: email field is required', function() {
     forgotPasswordData.json["email"] = "";
+
     return request(app)
       .post(forgotPasswordData.api)
       .send(forgotPasswordData.json)
@@ -456,6 +555,7 @@ describe('POST /forgotpassword', function() {
 
   it('validation error: email is invalid', function() {
     forgotPasswordData.json["email"] = "amith.raravigmail.com";
+
     return request(app)
       .post(forgotPasswordData.api)
       .send(forgotPasswordData.json)
@@ -481,9 +581,9 @@ describe('POST /resetpassword', function() {
       name: 'Amith Raravi',
       email: 'amith.raravi@gmail.com',
       password: '$2a$12$.TdDUPO04ICoSdHmVy90x.rBptpYykbAFd4bTqxrEuutJQR2zjV5K',
-      date: new Date('2020-03-03T22:39:32.371Z'),
+      date: mockDateCreated,
       __v: 0,
-      resetPasswordExpires: new Date('2220-03-26T03:26:04.136Z'),
+      resetPasswordExpires: mockDateFuture,
       resetPasswordToken: '$2a$12$5z5/4rfoZHi7y4nrtvtHzuWgA8d9UnCLQpydhHLvm3hS.gpo9akkW'
     };
   });
@@ -509,12 +609,10 @@ describe('POST /resetpassword', function() {
   it('error: bcrypt hashing error', function() {
     const userFindOne = sinon.stub(User, 'findOne');
     userFindOne.resolves(resetPasswordData.resolve);
-
     const bcryptCompare = sinon.stub(bcrypt, 'compare');
     bcryptCompare.resolves(true);
-
     const bcryptHash = sinon.stub(bcrypt, 'hash');
-    bcryptHash.callsFake((p1, p2, cb) => cb("Error"));
+    bcryptHash.callsFake((p1, p2, cb) => cb(errorData.simpleError));
 
     return request(app)
       .post(resetPasswordData.api)
@@ -531,7 +629,7 @@ describe('POST /resetpassword', function() {
   });
 
   it('error: password saving to DB failed', function() {
-    resetPasswordData.resolve.save = () => Promise.reject({error: "Error"});
+    resetPasswordData.resolve.save = () => Promise.reject(errorData.simpleError);
     const userFindOne = sinon.stub(User, 'findOne');
     userFindOne.resolves(resetPasswordData.resolve);
 
@@ -549,6 +647,7 @@ describe('POST /resetpassword', function() {
 
   it('error: email not found', function() {
     resetPasswordData.json["email"] = "amith.raravi@gmail.co";
+
     return request(app)
       .post(resetPasswordData.api)
       .send(resetPasswordData.json)
@@ -561,7 +660,7 @@ describe('POST /resetpassword', function() {
   });
 
   it('error: reset code has expired', function() {
-    resetPasswordData.resolve.resetPasswordExpires = new Date('2020-03-26T03:26:04.136Z');
+    resetPasswordData.resolve.resetPasswordExpires = mockDateExpired;
     resetPasswordData.resolve.save = () => {};
     const userFindOne = sinon.stub(User, 'findOne');
     userFindOne.resolves(resetPasswordData.resolve);
@@ -580,6 +679,7 @@ describe('POST /resetpassword', function() {
 
   it('error: reset code is invalid', function() {
     resetPasswordData.json["resetcode"] = "8c4e65";
+
     return request(app)
       .post(resetPasswordData.api)
       .send(resetPasswordData.json)
@@ -593,6 +693,7 @@ describe('POST /resetpassword', function() {
 
   it('validation error: email field is required', function() {
     resetPasswordData.json["email"] = "";
+
     return request(app)
       .post(resetPasswordData.api)
       .send(resetPasswordData.json)
@@ -606,6 +707,7 @@ describe('POST /resetpassword', function() {
 
   it('validation error: email is invalid', function() {
     resetPasswordData.json["email"] = "amith.raravigmail.com";
+
     return request(app)
       .post(resetPasswordData.api)
       .send(resetPasswordData.json)
@@ -619,6 +721,7 @@ describe('POST /resetpassword', function() {
 
   it('validation error: reset code is required', function() {
     resetPasswordData.json["resetcode"] = "";
+
     return request(app)
       .post(resetPasswordData.api)
       .send(resetPasswordData.json)
@@ -632,6 +735,7 @@ describe('POST /resetpassword', function() {
 
   it('validation error: password field is required', function() {
     resetPasswordData.json["password"] = "";
+
     return request(app)
       .post(resetPasswordData.api)
       .send(resetPasswordData.json)
@@ -645,6 +749,7 @@ describe('POST /resetpassword', function() {
 
   it('validation error: password must be at least 6 characters', function() {
     resetPasswordData.json["password"] = "Dm";
+
     return request(app)
       .post(resetPasswordData.api)
       .send(resetPasswordData.json)
@@ -658,6 +763,7 @@ describe('POST /resetpassword', function() {
 
   it('validation error: confirm password field is required', function() {
     resetPasswordData.json["password2"] = "";
+
     return request(app)
       .post(resetPasswordData.api)
       .send(resetPasswordData.json)
@@ -671,6 +777,7 @@ describe('POST /resetpassword', function() {
 
   it('validation error: passwords must match', function() {
     resetPasswordData.json["password"] = "DmN";
+
     return request(app)
       .post(resetPasswordData.api)
       .send(resetPasswordData.json)
@@ -686,52 +793,38 @@ describe('POST /resetpassword', function() {
 describe('POST /logout', function() {
   it('success: logs off', function() {
     return request(app)
-      .post('/api/users/logout')
-      .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVlNWVkY2E0M2FhOWRjNTg3NTAzZTFiNCIsIm5hbWUiOiJBbWl0aCBSYXJhdmkiLCJpYXQiOjE1ODUxOTcxNzEsImV4cCI6MTYxNjc1NDA5N30.4z8q_gKxZM8edbCeKLOYpBNEc-YB9cXvdM5TI0lDSCQ')
+      .post(logoutData.api)
+      .set('Authorization', logoutData.token)
       .expect('Content-Type', /json/)
       .expect(200)
       .then(response => {
-        expect(response.body.logoff).to.equal('Logged off');
+        expect(response.body.logoff).to.equal(logoutData.loggedOff);
       });
   });
 
   it('error: session.destroy error', async function() {
-    const mockResponse = () => {
-      const res = {};
-      // replace the following () => res
-      // with your function stub/mock of choice
-      // making sure they still return `res`
-      // res.status = () => res;
-      // res.json = () => res;
-      res.status = sinon.stub().returns(res);
-      res.json = sinon.stub().returns(res);
-      return res;
-    };
-
-    const mockRequest = (sessionData) => {
-      return {
-        session: {
-          data: sessionData,
-          // destroy: (cb) => cb({error: "Error"}),
-          destroy: sinon.stub().callsFake((cb) => cb({error: "Error"}))
-        },
-      };
-    };
-
     const req = mockRequest();
     const res = mockResponse();
+    req.session.destroy = sinon.stub().callsFake((cb) => cb(errorData.simpleError));
+
     await logout(req, res);
+
     sinon.assert.calledWith(res.status, 400);
-    sinon.assert.calledWith(res.json, { logoff: "There was an error, please try again!" });
+    sinon.assert.calledWith(res.json, logoutData.error);
   });
 });
 
 describe('POST /sync', function() {
   let token;
+
   before(function(done) {
+    loginData.json = {
+      "email": "amith.raravi@gmail.com",
+      "password": "DmNcMZKa488WiBy",
+    };
     request(app)
       .post(loginData.api)
-      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .send(loginData.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
@@ -744,6 +837,17 @@ describe('POST /sync', function() {
       });
   });
 
+  beforeEach(function() {
+    syncData.note = {
+      id: "dummyid1",
+      userid: "dummyuser1",
+      note: "dummynote1",
+      modifieddate: mockDateCreated,
+      createddate: mockDateCreated,
+      modifiedsession: "dummysession1"
+    };
+  });
+
   after(function(done) {
     // Delete session
     deleteSession(token);
@@ -751,246 +855,104 @@ describe('POST /sync', function() {
   });
 
   it('success: note modified by another session (synceddate)', async function() {
-    const note = {
-      id: "dummyid1",
-      userid: "dummyuser1",
-      note: "dummynote1",
-      modifieddate: new Date("2020-03-03T22:39:32.371Z"),
-      createddate: new Date("2020-03-03T22:39:32.371Z"),
-      modifiedsession: "dummysession1"
-    };
-
     const noteFindById = sinon.stub(Note, 'findById');
-    noteFindById.resolves(note);
-
-    const mockResponse = () => {
-      const res = {};
-      // res.status = () => res;
-      // res.json = () => res;
-      res.status = sinon.stub().returns(res);
-      res.json = sinon.stub().returns(res);
-      return res;
-    };
-
-    const mockRequest = (sessionData) => {
-      return {
-        body: {
-          "userid": "dummyuser1",
-          "noteid": "dummynote1"
-        },
-        session: {
-          data: sessionData,
-          id: "dummysession2",
-          synceddate: new Date("2020-03-02T22:39:32.371Z"),
-        },
-      };
-    };
-
+    noteFindById.resolves(syncData.note);
     const req = mockRequest();
     const res = mockResponse();
+    req.session.id = "dummysession2";
+    req.session.synceddate = mockDateOther;
+
     await syncNote(req, res);
+
     sinon.assert.calledWith(res.json, {
       notemodified: "Note modified by another session",
-      note: note.note,
-      modifieddate: note.modifieddate
+      note: syncData.note.note,
+      modifieddate: syncData.note.modifieddate
     });
     Note.findById.restore();
   });
 
   it('success: note modified by another session (req.session[noteid])', async function() {
-    const note = {
-      id: "dummyid1",
-      userid: "dummyuser1",
-      note: "dummynote1",
-      modifieddate: new Date("2020-03-03T22:39:32.371Z"),
-      createddate: new Date("2020-03-03T22:39:32.371Z"),
-      modifiedsession: "dummysession1"
-    };
-
     const noteFindById = sinon.stub(Note, 'findById');
-    noteFindById.resolves(note);
-
-    const mockResponse = () => {
-      const res = {};
-      // res.status = () => res;
-      // res.json = () => res;
-      res.status = sinon.stub().returns(res);
-      res.json = sinon.stub().returns(res);
-      return res;
-    };
-
-    const mockRequest = (sessionData) => {
-      return {
-        body: {
-          "userid": "dummyuser1",
-          "noteid": "dummynote1"
-        },
-        session: {
-          data: sessionData,
-          id: "dummysession2",
-          "dummynote1": new Date("2020-03-02T22:39:32.371Z"),
-          // synceddate: new Date("2020-03-02T22:39:32.371Z")
-        },
-      };
-    };
+    noteFindById.resolves(syncData.note);
 
     const req = mockRequest();
     const res = mockResponse();
+    req.session.id = "dummysession2";
+    req.session["dummynote1"] = mockDateOther;
+
     await syncNote(req, res);
+
     sinon.assert.calledWith(res.json, {
       notemodified: "Note modified by another session",
-      note: note.note,
-      modifieddate: note.modifieddate
+      note: syncData.note.note,
+      modifieddate: syncData.note.modifieddate
     });
     Note.findById.restore();
   });
 
   it('success: no changes', async function() {
-    const note = {
-      id: "dummyid1",
-      userid: "dummyuser1",
-      note: "dummynote1",
-      modifieddate: new Date("2020-03-03T22:39:32.371Z"),
-      createddate: new Date("2020-03-03T22:39:32.371Z"),
-      modifiedsession: "dummysession1"
-    };
-
     const noteFindById = sinon.stub(Note, 'findById');
-    noteFindById.resolves(note);
-
-    const mockResponse = () => {
-      const res = {};
-      // res.status = () => res;
-      // res.json = () => res;
-      res.status = sinon.stub().returns(res);
-      res.json = sinon.stub().returns(res);
-      return res;
-    };
-
-    const mockRequest = (sessionData) => {
-      return {
-        body: {
-          "userid": "dummyuser1",
-          "noteid": "dummynote1"
-        },
-        session: {
-          data: sessionData,
-          id: "dummysession1",
-          synceddate: new Date("2020-03-02T22:39:32.371Z")
-        },
-      };
-    };
+    noteFindById.resolves(syncData.note);
 
     const req = mockRequest();
     const res = mockResponse();
+    req.session.id = "dummysession1";
+    req.session.synceddate = mockDateOther;
+
     await syncNote(req, res);
+
     sinon.assert.calledWith(res.json, {nochanges: "No changes"});
     Note.findById.restore();
   });
 
   it('success: note updated', function(done) {
-    const note = {
-      id: "dummyid1",
-      userid: "dummyuser1",
-      note: "dummynote1",
-      modifieddate: new Date("2020-03-03T22:39:32.371Z"),
-      createddate: new Date("2020-03-03T22:39:32.371Z"),
-      modifiedsession: "dummysession1",
-      save: sinon.stub().resolves({
-        modifieddate: new Date("2020-03-04T22:39:32.371Z")
-      })
-    };
-
+    syncData.note.save = sinon.stub().resolves({
+      modifieddate: mockDateExpired
+    });
     const noteFindById = sinon.stub(Note, 'findById');
-    noteFindById.resolves(note);
-
-    const mockResponse = () => {
-      const res = {};
-      // res.status = () => res;
-      // res.json = () => res;
-      res.status = sinon.stub().returns(res);
-      // res.json = sinon.stub().returns(res);
-      res.json = sinon.stub().callsFake((body) => {
-        res.body = body;
-        return res;
-      });
-      return res;
-    };
-
-    const mockRequest = (sessionData) => {
-      return {
-        body: {
-          "userid": "dummyuser1",
-          "noteid": "dummynote1",
-          "notetext": "dummytext"
-        },
-        session: {
-          data: sessionData,
-          id: "dummysession1",
-          synceddate: new Date("2020-03-02T22:39:32.371Z")
-        },
-      };
-    };
+    noteFindById.resolves(syncData.note);
 
     const req = mockRequest();
     const res = mockResponse();
+    req.body["notetext"] = "dummytext";
+    req.session.id = "dummysession1";
+    req.session.synceddate = mockDateOther;
+    res.json = sinon.stub().callsFake((body) => {
+      res.body = body;
+      return res;
+    });
+
     syncNote(req, res);
     done();
+
     Note.findById.restore();
     sinon.assert.calledWith(res.json, {
       success: "Note updated!",
-      modifieddate: new Date("2020-03-04T22:39:32.371Z")
+      modifieddate: mockDateExpired
     });
   });
 
   it('error: MongoDB save note error', function(done) {
-    const note = {
-      id: "dummyid1",
-      userid: "dummyuser1",
-      note: "dummynote1",
-      modifieddate: new Date("2020-03-03T22:39:32.371Z"),
-      createddate: new Date("2020-03-03T22:39:32.371Z"),
-      modifiedsession: "dummysession1",
-      save: sinon.stub().rejects({ error: "Error" })
-    };
-
+    syncData.note.save = sinon.stub().rejects(errorData.simpleError);
     const noteFindById = sinon.stub(Note, 'findById');
-    noteFindById.resolves(note);
-
-    const mockResponse = () => {
-      const res = {};
-      // res.status = () => res;
-      // res.json = () => res;
-      res.status = sinon.stub().returns(res);
-      // res.json = sinon.stub().returns(res);
-      res.json = sinon.stub().callsFake((body) => {
-        res.body = body;
-        return res;
-      });
-      return res;
-    };
-
-    const mockRequest = (sessionData) => {
-      return {
-        body: {
-          "userid": "dummyuser1",
-          "noteid": "dummynote1",
-          "notetext": "dummytext"
-        },
-        session: {
-          data: sessionData,
-          id: "dummysession1",
-          synceddate: new Date("2020-03-02T22:39:32.371Z")
-        },
-      };
-    };
+    noteFindById.resolves(syncData.note);
 
     const req = mockRequest();
     const res = mockResponse();
+    req.body["notetext"] = "dummytext";
+    req.session.id = "dummysession1";
+    req.session.synceddate = mockDateOther;
+    res.json = sinon.stub().callsFake((body) => {
+      res.body = body;
+      return res;
+    });
+
     syncNote(req, res);
     done();
+
     Note.findById.restore();
-    sinon.assert.calledWith(res.json, { error: "There was an error, note couldn't be updated!" });
+    sinon.assert.calledWith(res.json, syncData.errorNotUpdated);
   });
 
   it('error: note not found', function() {
@@ -998,45 +960,31 @@ describe('POST /sync', function() {
     noteFindById.resolves(null);
 
     return request(app)
-      .post('/api/users/sync')
-      .send({
-        "userid": "dummyuser",
-        "noteid": "dummynote"
-      })
+      .post(syncData.api)
+      .send(syncData.json)
       .set('Accept', 'application/json')
       .set('Authorization', "Bearer " + token)
       .expect('Content-Type', /json/)
       .expect(404)
       .then(response => {
-        expect(response.body.error).to.equal("Note not found");
+        expect(response.body.error).to.equal(syncData.errorNotFound);
         Note.findById.restore();
       });
   });
 
   it('error: userid mismatch', function() {
-    const note = {
-      id: "dummyid1",
-      userid: "dummyuser1",
-      note: "dummynote1",
-      modifieddate: "2020-03-03T22:39:32.371Z",
-      createddate: "2020-03-03T22:39:32.371Z"
-    };
-
     const noteFindById = sinon.stub(Note, 'findById');
-    noteFindById.resolves(note);
+    noteFindById.resolves(syncData.note);
 
     return request(app)
-      .post('/api/users/sync')
-      .send({
-        "userid": "dummyuser",
-        "noteid": "dummynote"
-      })
+      .post(syncData.api)
+      .send(syncData.json)
       .set('Accept', 'application/json')
       .set('Authorization', "Bearer " + token)
       .expect('Content-Type', /json/)
       .expect(404)
       .then(response => {
-        expect(response.body.error).to.equal("Sync error");
+        expect(response.body.error).to.equal(syncData.errorNotSynced);
         Note.findById.restore();
       });
   });
@@ -1044,10 +992,15 @@ describe('POST /sync', function() {
 
 describe('POST /sendall', function() {
   let token;
+
   before(function(done) {
+    loginData.json = {
+      "email": "amith.raravi@gmail.com",
+      "password": "DmNcMZKa488WiBy",
+    };
     request(app)
       .post(loginData.api)
-      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .send(loginData.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
@@ -1067,30 +1020,19 @@ describe('POST /sendall', function() {
   });
 
   it('success: notes sent', function() {
-    const notes = [{
-      id: "dummyid1",
-      note: "dummynote1",
-      modifieddate: "2020-03-03T22:39:32.371Z"
-    },{
-      id: "dummyid2",
-      note: "dummynote2",
-      modifieddate: "2020-03-03T22:39:32.371Z"
-    }];
     const noteFind = sinon.stub(Note, 'find');
-    noteFind.resolves(notes);
+    noteFind.resolves(sendAllData.notes);
 
     return request(app)
-      .post('/api/users/sendall')
-      .send({
-        "userid": "dummyuser"
-      })
+      .post(sendAllData.api)
+      .send(sendAllData.json)
       .set('Accept', 'application/json')
       .set('Authorization', "Bearer " + token)
       .expect('Content-Type', /json/)
       .expect(200)
       .then(response => {
         expect(response.body.success).to.equal(true);
-        expect(response.body.notes).to.deep.equal(notes);
+        expect(response.body.notes).to.deep.equal(sendAllData.notes);
         Note.find.restore();
       });
   });
@@ -1099,9 +1041,13 @@ describe('POST /sendall', function() {
 describe('POST /new', function() {
   let token;
   before(function(done) {
+    loginData.json = {
+      "email": "amith.raravi@gmail.com",
+      "password": "DmNcMZKa488WiBy",
+    };
     request(app)
       .post(loginData.api)
-      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .send(loginData.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
@@ -1121,51 +1067,35 @@ describe('POST /new', function() {
   });
 
   it('success: new note sent', function() {
-    const note = {
-      id: "dummyid1",
-      note: "dummynote1",
-      modifieddate: "2020-03-03T22:39:32.371Z",
-      createddate: "2020-03-03T22:39:32.371Z"
-    };
     const noteSave = sinon.stub(Note.prototype, 'save');
-    noteSave.resolves(note);
+    noteSave.resolves(newNoteData.note);
 
     return request(app)
-      .post('/api/users/new')
-      .send({
-        "userid": "dummyuser"
-      })
+      .post(newNoteData.api)
+      .send(newNoteData.json)
       .set('Accept', 'application/json')
       .set('Authorization', "Bearer " + token)
       .expect('Content-Type', /json/)
       .expect(200)
       .then(response => {
-        expect(response.body.note).to.deep.equal(note);
+        expect(response.body.note).to.deep.equal(newNoteData.note);
         Note.prototype.save.restore();
       });
   });
 
   it('error: adding to DB failed!', function() {
-    const note = {
-      id: "dummyid1",
-      note: "dummynote1",
-      modifieddate: "2020-03-03T22:39:32.371Z",
-      createddate: "2020-03-03T22:39:32.371Z"
-    };
     const noteSave = sinon.stub(Note.prototype, 'save');
-    noteSave.rejects({error: "Error"});
+    noteSave.rejects(errorData.simpleError);
 
     return request(app)
-      .post('/api/users/new')
-      .send({
-        "userid": "dummyuser"
-      })
+      .post(newNoteData.api)
+      .send(newNoteData.json)
       .set('Accept', 'application/json')
       .set('Authorization', "Bearer " + token)
       .expect('Content-Type', /json/)
       .expect(400)
       .then(response => {
-        expect(response.body.error).to.equal('Adding to DB failed!');
+        expect(response.body.error).to.equal(newNoteData.error);
         Note.prototype.save.restore();
       });
   });
@@ -1173,10 +1103,15 @@ describe('POST /new', function() {
 
 describe('POST /delete', function() {
   let token;
+
   before(function(done) {
+    loginData.json = {
+      "email": "amith.raravi@gmail.com",
+      "password": "DmNcMZKa488WiBy",
+    };
     request(app)
       .post(loginData.api)
-      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .send(loginData.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
@@ -1200,37 +1135,31 @@ describe('POST /delete', function() {
     noteFindByIdAndRemove.resolves({});
 
     return request(app)
-      .post('/api/users/delete')
-      .send({
-        "userid": "dummyuser",
-        "noteid": "dummynote"
-      })
+      .post(deleteNoteData.api)
+      .send(deleteNoteData.json)
       .set('Accept', 'application/json')
       .set('Authorization', "Bearer " + token)
       .expect('Content-Type', /json/)
       .expect(200)
       .then(response => {
-        expect(response.body.success).to.equal('Note deleted!');
+        expect(response.body.success).to.equal(deleteNoteData.success);
         Note.findByIdAndRemove.restore();
       });
   });
 
   it('error: delete failed', function() {
     const noteFindByIdAndRemove = sinon.stub(Note, 'findByIdAndRemove');
-    noteFindByIdAndRemove.rejects({error: "Error"});
+    noteFindByIdAndRemove.rejects(errorData.simpleError);
 
     return request(app)
-      .post('/api/users/delete')
-      .send({
-        "userid": "dummyuser",
-        "noteid": "dummynote"
-      })
+      .post(deleteNoteData.api)
+      .send(deleteNoteData.json)
       .set('Accept', 'application/json')
       .set('Authorization', "Bearer " + token)
       .expect('Content-Type', /json/)
       .expect(400)
       .then(response => {
-        expect(response.body.error).to.equal('Delete failed!');
+        expect(response.body.error).to.equal(deleteNoteData.error);
         Note.findByIdAndRemove.restore();
       });
   });
@@ -1251,10 +1180,15 @@ describe('GET /resetpassword', function() {
 
 describe('Passport.js', function() {
   let token;
+
   before(function(done) {
+    loginData.json = {
+      "email": "amith.raravi@gmail.com",
+      "password": "DmNcMZKa488WiBy",
+    };
     request(app)
       .post(loginData.api)
-      .send({"email": "amith.raravi@gmail.com", "password": "DmNcMZKa488WiBy"})
+      .send(loginData.json)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
@@ -1275,14 +1209,11 @@ describe('Passport.js', function() {
 
   it('User.findOne: error', function() {
     const userFindOne = sinon.stub(User, 'findOne');
-    userFindOne.callsFake((p1, cb) => cb({error: "Error"}));
+    userFindOne.callsFake((p1, cb) => cb(errorData.simpleError));
 
     return request(app)
-      .post('/api/users/delete')
-      .send({
-        "userid": "dummyuser",
-        "noteid": "dummynote"
-      })
+      .post(deleteNoteData.api)
+      .send(deleteNoteData.json)
       .set('Accept', 'application/json')
       .set('Authorization', "Bearer " + token)
       .expect(500)
@@ -1297,11 +1228,8 @@ describe('Passport.js', function() {
     userFindOne.callsFake((p1, cb) => cb(null, null));
 
     return request(app)
-      .post('/api/users/delete')
-      .send({
-        "userid": "dummyuser",
-        "noteid": "dummynote"
-      })
+      .post(deleteNoteData.api)
+      .send(deleteNoteData.json)
       .set('Accept', 'application/json')
       .set('Authorization', "Bearer " + token)
       .expect(401)

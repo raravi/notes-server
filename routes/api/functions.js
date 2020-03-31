@@ -247,7 +247,7 @@ const resetPassword = (req, res) => {
 const logout = (req, res) => {
   req.session.destroy(err => {
     if (err) {
-      console.log(err);
+      console.log("session destroy error: ", err);
       return res.status(400).json({ logoff: "There was an error, please try again!" });
     }
     else {
