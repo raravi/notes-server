@@ -2,7 +2,7 @@
 
 A node.js server for notes app.
 
-![license](https://img.shields.io/github/license/raravi/notes-server)&nbsp;&nbsp;![version](https://img.shields.io/github/package-json/v/raravi/notes-server)&nbsp;&nbsp;![coverage](https://img.shields.io/codecov/c/gh/raravi/notes-server)&nbsp;&nbsp;![dependencies](https://img.shields.io/depfu/raravi/notes-server)&nbsp;&nbsp;![last-commit](https://img.shields.io/github/last-commit/raravi/notes-server)
+![version](https://img.shields.io/github/package-json/v/raravi/notes-server)&nbsp;&nbsp;![coverage](https://img.shields.io/codecov/c/gh/raravi/notes-server)&nbsp;&nbsp;![dependencies](https://img.shields.io/depfu/raravi/notes-server)&nbsp;&nbsp;![last-commit](https://img.shields.io/github/last-commit/raravi/notes-server)
 
 The server runs in **node.js** using [Express](https://expressjs.com/) to setup a server to listen to requests to API endpoints and `/resetpassword` route.
 
