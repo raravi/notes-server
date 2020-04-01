@@ -31,6 +31,11 @@ The server runs in **node.js** using [Express](https://expressjs.com/) to setup 
 The `/resetpassword` POST Request is handled by sending the `/resetpassword/index.html` webpage back to the user, where they can enter relevant details to reset the password.
 
 ## Mailing feature
+
 A mail is triggered to the user with the [nodemailer](https://nodemailer.com/usage/) package, you will need to setup your existing email Id for this. Or you can create a new one. You have to create a 'app password' (Gmail/Yahoo/etc.. each have their own way of generating app passwords, please consult the relevant documentation as per your requirements) and use it to send mails!
+
+## Testing (Mocha, Chai, Sinon & Supertest)
+
+This project has a code coverage of 100% with functional as well as unit tests written with care.
 
 Have fun with the code!
