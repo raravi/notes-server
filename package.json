@@ -13,6 +13,7 @@
   "license": "The MIT License (MIT)",
   "devDependencies": {
     "chai": "^4.2.0",
+    "codecov": "^3.6.5",
     "jwt-decode": "^2.2.0",
     "mocha": "^7.1.1",
     "nodemon": "^2.0.2",
