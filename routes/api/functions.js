@@ -18,6 +18,12 @@ const validateResetPasswordInput = require("../../validation/resetpassword");
 const User = require("../../models/User");
 const Note = require("../../models/Note");
 
+/**
+ * This function handles registering of new users.
+ * Checks if all the details are correct, then writes it
+ * to the DB and responds to the user. If the details are
+ * wrong, throws relevant errors.
+ */
 const register = (req, res) => {
   // Form validation
   const { errors, isValid } = validateRegisterInput(req.body);
@@ -56,6 +62,11 @@ const register = (req, res) => {
   });
 };
 
+/**
+ * This function handles login of the user. Checks if all the
+ * details are correct, then responds to the user with a token.
+ * If the details are wrong, throws relevant errors.
+ */
 const login = (req, res) => {
   // Form validation
   const { errors, isValid } = validateLoginInput(req.body);
@@ -117,6 +128,11 @@ const login = (req, res) => {
   });
 };
 
+/**
+ * This function handles "Forgot Password" of the user. Checks if the
+ * email address is correct, then sends an email to the user with a token.
+ * If the details are wrong, throws relevant errors.
+ */
 const forgotPassword = (req, res) => {
   // Form validation
   const { errors, isValid } = validateForgotPasswordInput(req.body);
@@ -184,6 +200,11 @@ const forgotPassword = (req, res) => {
   });
 };
 
+/**
+ * This function handles "Reset Password" of the user. Checks if the
+ * details provided are correct, then resets the password of the user.
+ * If the details are wrong, throws relevant errors.
+ */
 const resetPassword = (req, res) => {
   // Form validation
   const { errors, isValid } = validateResetPasswordInput(req.body);
@@ -244,6 +265,10 @@ const resetPassword = (req, res) => {
   });
 };
 
+/**
+ * This function handles "logout" of the user.
+ * If there was an issue, throws relevant errors.
+ */
 const logout = (req, res) => {
   req.session.destroy(err => {
     if (err) {
@@ -256,6 +281,11 @@ const logout = (req, res) => {
   });
 };
 
+/**
+ * This function handles syncing of the current note for the user.
+ * Checks if the note has been edited, and syncs it with the DB.
+ * If the details are wrong, throws relevant errors.
+ */
 const syncNote = (req, res) => {
   Note.findById(req.body.noteid).then(note => {
     // Check if note exists
@@ -305,6 +335,10 @@ const syncNote = (req, res) => {
   });
 };
 
+/**
+ * This function handles syncing of all notes of the user.
+ * If the details are wrong, throws relevant errors.
+ */
 const sendAllNotes = (req, res) => {
   Note.find({userid: req.body.userid}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
     let notes = [];
@@ -323,6 +357,10 @@ const sendAllNotes = (req, res) => {
   });
 };
 
+/**
+ * This function handles creating a new note of the user.
+ * If there is an issue, throws relevant errors.
+ */
 const newNote = (req, res) => {
   let date = Date.now();
   const newNote = new Note({
@@ -348,6 +386,10 @@ const newNote = (req, res) => {
     });
 };
 
+/**
+ * This function handles deleting a note of the user.
+ * If there is an issue, throws relevant errors.
+ */
 const deleteNote = (req, res) => {
   Note.findByIdAndRemove(req.body.noteid).then(() => {
     return res.json({success: "Note deleted!"});

@@ -9,10 +9,16 @@ const bcrypt = require("bcryptjs");
 const session = require('express-session');
 const { resetPassword, logout, syncNote } = require("../routes/api/functions");
 
+/**
+ * Load User / Note / Session models
+ */
 const User = require("../models/User");
 const Note = require("../models/Note");
 const Session = require("./models/Session");
 
+/**
+ * Stubs / Mocks
+ */
 const mockDateOther = new Date("2020-03-02T22:39:32.371Z"),
       mockDateCreated = new Date("2020-03-03T22:39:32.371Z"),
       mockDateExpired = new Date("2020-03-04T22:39:32.371Z"),
@@ -146,6 +152,9 @@ let registerData = {
       simpleError: { error: "Error" }
     };
 
+/**
+ * This is a helper function to delete a session after test.
+ */
 function deleteSession(token) {
   Session.find({}, {}, { sort: { _id: 1 }}).then((sessions) => {
     let sessionId;
@@ -183,6 +192,9 @@ after(function() {
   }, 500);
 });
 
+/**
+ * Tests for the REGISTER endpoint.
+ */
 describe('POST /register', function() {
   beforeEach(function() {
     registerData.json = {
@@ -357,6 +369,9 @@ describe('POST /register', function() {
   });
 });
 
+/**
+ * Tests for the LOGIN endpoint.
+ */
 describe('POST /login', function() {
   beforeEach(function() {
     loginData.json = {
@@ -453,6 +468,9 @@ describe('POST /login', function() {
   });
 });
 
+/**
+ * Tests for the FORGOTPASSWORD endpoint.
+ */
 describe('POST /forgotpassword', function() {
   beforeEach(function() {
     forgotPasswordData.json = {
@@ -568,6 +586,9 @@ describe('POST /forgotpassword', function() {
   });
 });
 
+/**
+ * Tests for the RESETPASSWORD endpoint.
+ */
 describe('POST /resetpassword', function() {
   beforeEach(function() {
     resetPasswordData.json = {
@@ -790,6 +811,9 @@ describe('POST /resetpassword', function() {
   });
 });
 
+/**
+ * Tests for the LOGOUT endpoint.
+ */
 describe('POST /logout', function() {
   it('success: logs off', function() {
     return request(app)
@@ -814,6 +838,9 @@ describe('POST /logout', function() {
   });
 });
 
+/**
+ * Tests for the SYNC endpoint.
+ */
 describe('POST /sync', function() {
   let token;
 
@@ -990,6 +1017,9 @@ describe('POST /sync', function() {
   });
 });
 
+/**
+ * Tests for the SENDALL endpoint.
+ */
 describe('POST /sendall', function() {
   let token;
 
@@ -1038,6 +1068,9 @@ describe('POST /sendall', function() {
   });
 });
 
+/**
+ * Tests for the NEW endpoint.
+ */
 describe('POST /new', function() {
   let token;
   before(function(done) {
@@ -1101,6 +1134,9 @@ describe('POST /new', function() {
   });
 });
 
+/**
+ * Tests for the DELETE endpoint.
+ */
 describe('POST /delete', function() {
   let token;
 
@@ -1165,6 +1201,9 @@ describe('POST /delete', function() {
   });
 });
 
+/**
+ * Tests for the GET /RESETPASSWORD endpoint.
+ */
 describe('GET /resetpassword', function() {
   it('success: responds with HTML', function() {
     return request(app)
@@ -1178,6 +1217,9 @@ describe('GET /resetpassword', function() {
   });
 });
 
+/**
+ * Tests for the Passport authentication.
+ */
 describe('Passport.js', function() {
   let token;
 
