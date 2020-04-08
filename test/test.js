@@ -7,7 +7,9 @@ const jwtDecode = require('jwt-decode');
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const session = require('express-session');
-const { resetPassword, logout, syncNote } = require("../routes/api/functions");
+const { resetPassword,
+        logout,
+        syncNote } = require("../routes/api/functions");
 
 /**
  * Load User / Note / Session models
