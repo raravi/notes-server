@@ -2,7 +2,16 @@ const crypto = require('crypto');
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
-const keys = require("../../config/keys");
+
+let keys;
+if (!process.env.CI_ENVIRONMENT) {
+  keys = require("../../config/keys");
+} else {
+  keys = {};
+  keys.secretOrKey = process.env.CI_ENVIRONMENT_SECRETORKEY;
+  keys.email = process.env.CI_ENVIRONMENT_EMAIL;
+  keys.password = process.env.CI_ENVIRONMENT_PASSWORD;
+}
 
 /**
  * Load input validation

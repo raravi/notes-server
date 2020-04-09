@@ -1,7 +1,11 @@
 const mongoose = require("mongoose");
 
-const keys = require("../config/keys");
-const db = keys.mongoURI;
+let db;
+if (!process.env.CI_ENVIRONMENT) {
+  db = require("../config/keys").mongoURI;
+} else {
+  db = process.env.CI_ENVIRONMENT_MONGOURI;
+}
 
 // Connect to MongoDB
 
