@@ -12,7 +12,14 @@ const app = express();
 const port = 8000;
 
 const users = require("../routes/api/users");
-const keys = require("../config/keys");
+
+let keys;
+if (!process.env.CI_ENVIRONMENT) {
+  keys = require("../config/keys");
+} else {
+  keys = {};
+  keys.sessionSecret = process.env.CI_ENVIRONMENT_SESSIONSECRET;
+}
 
 // Enable CORS
 app.use(cors({
