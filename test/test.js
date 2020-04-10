@@ -1283,3 +1283,47 @@ describe('Passport.js', function() {
       });
   });
 });
+
+/**
+ * Tests for the CONFIG variables.
+ */
+describe('CONFIG Tests', function() {
+  before('before', function() {
+    process.env.CI_ENVIRONMENT = "CIRCLECI";
+  });
+
+  after('after', function() {
+    process.env.CI_ENVIRONMENT = null;
+  });
+
+  it('Passport Include', function(done) {
+    process.env.CI_ENVIRONMENT_SECRETORKEY = "dummykey";
+    delete require.cache[require.resolve('../config/passport')];
+    require('../config/passport');
+    done();
+  });
+
+  it('ROUTES/API/FUNCTIONS Include', function(done) {
+    delete require.cache[require.resolve('../routes/api/functions')];
+    require('../routes/api/functions');
+    done();
+  });
+
+  it('DB Include', function(done) {
+    const mongooseConnect = sinon.stub(mongoose, 'connect');
+    mongooseConnect.resolves({success: 'true'});
+
+    process.env.CI_ENVIRONMENT_MONGOURI = "dummymongouri";
+    delete require.cache[require.resolve('../server/db')];
+    require('../server/db');
+    done();
+    mongooseConnect.restore();
+  });
+
+  it('INDEX Include', function(done) {
+    process.env.CI_ENVIRONMENT_SESSIONSECRET = "dummysecret";
+    delete require.cache[require.resolve('../server')];
+    require('../server');
+    done();
+  });
+});

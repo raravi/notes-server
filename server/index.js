@@ -1,3 +1,4 @@
+require('dotenv').config();
 const passport = require("passport");
 const bodyParser = require("body-parser");
 const rateLimit = require("express-rate-limit");
