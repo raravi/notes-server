@@ -1,5 +1,4 @@
 /node_modules
-/config/keys.js
 /.nyc_output
 /coverage
 .env
