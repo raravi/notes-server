@@ -7,6 +7,7 @@ const jwtDecode = require('jwt-decode');
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const session = require('express-session');
+const dotenv = require('dotenv');
 const { resetPassword,
         logout,
         syncNote } = require("../routes/api/functions");
@@ -1288,42 +1289,98 @@ describe('Passport.js', function() {
  * Tests for the CONFIG variables.
  */
 describe('CONFIG Tests', function() {
-  before('before', function() {
-    process.env.CI_ENVIRONMENT = "CIRCLECI";
+  describe('In CI environment', function() {
+    before('before', function() {
+      process.env.CI_ENVIRONMENT = "CIRCLECI";
+    });
+
+    it('Passport Include', function() {
+      process.env.CI_ENVIRONMENT_SECRETORKEY = "dummykey";
+      delete require.cache[require.resolve('../config/passport')];
+      require('../config/passport');
+    });
+
+    it('ROUTES/API/FUNCTIONS Include', function() {
+      delete require.cache[require.resolve('../routes/api/functions')];
+      require('../routes/api/functions');
+    });
+
+    it('DB Include', function() {
+      const mongooseConnect = sinon.stub(mongoose, 'connect');
+      mongooseConnect.resolves({success: 'true'});
+
+      process.env.CI_ENVIRONMENT_MONGOURI = "dummymongouri";
+      delete require.cache[require.resolve('../server/db')];
+      require('../server/db');
+      mongooseConnect.restore();
+    });
+
+    it('INDEX Include', function() {
+      process.env.CI_ENVIRONMENT_SESSIONSECRET = "dummysecret";
+      delete require.cache[require.resolve('../server')];
+      require('../server');
+    });
   });
 
-  after('after', function() {
-    process.env.CI_ENVIRONMENT = null;
-  });
+  describe('In BUILD environment', function() {
+    before('before', function() {
+      process.env.CI_ENVIRONMENT = null;
+    });
 
-  it('Passport Include', function(done) {
-    process.env.CI_ENVIRONMENT_SECRETORKEY = "dummykey";
-    delete require.cache[require.resolve('../config/passport')];
-    require('../config/passport');
-    done();
-  });
+    it('Passport Include', function() {
+      // process.env.CI_ENVIRONMENT_SECRETORKEY = "dummykey";
+      const dotenvConfig = sinon.stub(dotenv, 'config');
+      dotenvConfig.callsFake(() => {
+        process.env.BUILD_ENVIRONMENT_SECRETORKEY="dummykey";
+      });
 
-  it('ROUTES/API/FUNCTIONS Include', function(done) {
-    delete require.cache[require.resolve('../routes/api/functions')];
-    require('../routes/api/functions');
-    done();
-  });
+      delete require.cache[require.resolve('../config/passport')];
+      require('../config/passport');
+      expect(dotenvConfig.calledOnce).to.equal(true);
+      dotenvConfig.restore();
+    });
 
-  it('DB Include', function(done) {
-    const mongooseConnect = sinon.stub(mongoose, 'connect');
-    mongooseConnect.resolves({success: 'true'});
+    it('ROUTES/API/FUNCTIONS Include', function() {
+      const dotenvConfig = sinon.stub(dotenv, 'config');
+      dotenvConfig.callsFake(() => {
+        process.env.BUILD_ENVIRONMENT_SECRETORKEY="dummykey";
+        process.env.BUILD_ENVIRONMENT_EMAIL="dummyemail";
+        process.env.BUILD_ENVIRONMENT_PASSWORD="dummypassword";
+      });
 
-    process.env.CI_ENVIRONMENT_MONGOURI = "dummymongouri";
-    delete require.cache[require.resolve('../server/db')];
-    require('../server/db');
-    done();
-    mongooseConnect.restore();
-  });
+      delete require.cache[require.resolve('../routes/api/functions')];
+      require('../routes/api/functions');
+      expect(dotenvConfig.calledOnce).to.equal(true);
+      dotenvConfig.restore();
+    });
 
-  it('INDEX Include', function(done) {
-    process.env.CI_ENVIRONMENT_SESSIONSECRET = "dummysecret";
-    delete require.cache[require.resolve('../server')];
-    require('../server');
-    done();
+    it('DB Include', function() {
+      const mongooseConnect = sinon.stub(mongoose, 'connect');
+      mongooseConnect.resolves({success: 'true'});
+
+      // process.env.CI_ENVIRONMENT_MONGOURI = "dummymongouri";
+      const dotenvConfig = sinon.stub(dotenv, 'config');
+      dotenvConfig.callsFake(() => {
+        process.env.BUILD_ENVIRONMENT_MONGOURI = "dummymongouri";
+      });
+      delete require.cache[require.resolve('../server/db')];
+      require('../server/db');
+      expect(dotenvConfig.calledOnce).to.equal(true);
+      expect(mongooseConnect.calledOnce).to.equal(true);
+      dotenvConfig.restore();
+      mongooseConnect.restore();
+    });
+
+    it('INDEX Include', function() {
+      // process.env.CI_ENVIRONMENT_SESSIONSECRET = "dummysecret";
+      const dotenvConfig = sinon.stub(dotenv, 'config');
+      dotenvConfig.callsFake(() => {
+        process.env.CI_ENVIRONMENT_SESSIONSECRET = "dummysecret";
+      });
+      delete require.cache[require.resolve('../server')];
+      require('../server');
+      expect(dotenvConfig.calledOnce).to.equal(true);
+      dotenvConfig.restore();
+    });
   });
 });

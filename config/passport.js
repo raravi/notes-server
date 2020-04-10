@@ -5,7 +5,9 @@ const User = require("../models/User");
 
 let keys;
 if (!process.env.CI_ENVIRONMENT) {
-  keys = require("./keys");
+  // keys = require("./keys");
+  keys = {};
+  keys.secretOrKey = process.env.BUILD_ENVIRONMENT_SECRETORKEY;
 } else {
   keys = {};
   keys.secretOrKey = process.env.CI_ENVIRONMENT_SECRETORKEY;

@@ -3,7 +3,8 @@ const mongoose = require("mongoose");
 
 let db;
 if (!process.env.CI_ENVIRONMENT) {
-  db = require("../config/keys").mongoURI;
+  // db = require("../config/keys").mongoURI;
+  db = process.env.BUILD_ENVIRONMENT_MONGOURI;
 } else {
   db = process.env.CI_ENVIRONMENT_MONGOURI;
 }

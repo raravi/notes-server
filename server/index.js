@@ -16,7 +16,9 @@ const users = require("../routes/api/users");
 
 let keys;
 if (!process.env.CI_ENVIRONMENT) {
-  keys = require("../config/keys");
+  // keys = require("../config/keys");
+  keys = {};
+  keys.sessionSecret = process.env.BUILD_ENVIRONMENT_SESSIONSECRET;
 } else {
   keys = {};
   keys.sessionSecret = process.env.CI_ENVIRONMENT_SESSIONSECRET;

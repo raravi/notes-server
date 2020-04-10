@@ -6,7 +6,11 @@ const nodemailer = require("nodemailer");
 
 let keys;
 if (!process.env.CI_ENVIRONMENT) {
-  keys = require("../../config/keys");
+  // keys = require("../../config/keys");
+  keys = {};
+  keys.secretOrKey = process.env.BUILD_ENVIRONMENT_SECRETORKEY;
+  keys.email = process.env.BUILD_ENVIRONMENT_EMAIL;
+  keys.password = process.env.BUILD_ENVIRONMENT_PASSWORD;
 } else {
   keys = {};
   keys.secretOrKey = process.env.CI_ENVIRONMENT_SECRETORKEY;
