@@ -3,15 +3,9 @@ const JwtStrategy = require("passport-jwt").Strategy;
 const ExtractJwt = require("passport-jwt").ExtractJwt;
 const User = require("../models/User");
 
-let keys;
-if (!process.env.CI_ENVIRONMENT) {
-  // keys = require("./keys");
-  keys = {};
-  keys.secretOrKey = process.env.BUILD_ENVIRONMENT_SECRETORKEY;
-} else {
-  keys = {};
-  keys.secretOrKey = process.env.CI_ENVIRONMENT_SECRETORKEY;
-}
+// Config from Environment variables
+let keys = {};
+keys.secretOrKey = process.env.NOTESAPP_SECRETORKEY;
 
 var opts = {};
 

@@ -14,15 +14,9 @@ const port = 8000;
 
 const users = require("../routes/api/users");
 
-let keys;
-if (!process.env.CI_ENVIRONMENT) {
-  // keys = require("../config/keys");
-  keys = {};
-  keys.sessionSecret = process.env.BUILD_ENVIRONMENT_SESSIONSECRET;
-} else {
-  keys = {};
-  keys.sessionSecret = process.env.CI_ENVIRONMENT_SESSIONSECRET;
-}
+// Config from Environment variables
+let keys = {};
+keys.sessionSecret = process.env.NOTESAPP_SESSIONSECRET;
 
 // Enable CORS
 app.use(cors({

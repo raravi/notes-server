@@ -1288,99 +1288,31 @@ describe('Passport.js', function() {
 /**
  * Tests for the CONFIG variables.
  */
-describe('CONFIG Tests', function() {
-  describe('In CI environment', function() {
-    before('before', function() {
-      process.env.CI_ENVIRONMENT = "CIRCLECI";
-    });
-
-    it('Passport Include', function() {
-      process.env.CI_ENVIRONMENT_SECRETORKEY = "dummykey";
-      delete require.cache[require.resolve('../config/passport')];
-      require('../config/passport');
-    });
-
-    it('ROUTES/API/FUNCTIONS Include', function() {
-      delete require.cache[require.resolve('../routes/api/functions')];
-      require('../routes/api/functions');
-    });
-
-    it('DB Include', function() {
-      const mongooseConnect = sinon.stub(mongoose, 'connect');
-      mongooseConnect.resolves({success: 'true'});
-
-      process.env.CI_ENVIRONMENT_MONGOURI = "dummymongouri";
-      delete require.cache[require.resolve('../server/db')];
-      require('../server/db');
-      mongooseConnect.restore();
-    });
-
-    it('INDEX Include', function() {
-      process.env.CI_ENVIRONMENT_SESSIONSECRET = "dummysecret";
-      delete require.cache[require.resolve('../server')];
-      require('../server');
-    });
+describe('CONFIG Tests: In CI environment', function() {
+  it('Passport Include', function() {
+    process.env.CI_ENVIRONMENT_SECRETORKEY = "dummykey";
+    delete require.cache[require.resolve('../config/passport')];
+    require('../config/passport');
   });
 
-  describe('In BUILD environment', function() {
-    before('before', function() {
-      process.env.CI_ENVIRONMENT = null;
-    });
+  it('ROUTES/API/FUNCTIONS Include', function() {
+    delete require.cache[require.resolve('../routes/api/functions')];
+    require('../routes/api/functions');
+  });
 
-    it('Passport Include', function() {
-      // process.env.CI_ENVIRONMENT_SECRETORKEY = "dummykey";
-      const dotenvConfig = sinon.stub(dotenv, 'config');
-      dotenvConfig.callsFake(() => {
-        process.env.BUILD_ENVIRONMENT_SECRETORKEY="dummykey";
-      });
+  it('DB Include', function() {
+    const mongooseConnect = sinon.stub(mongoose, 'connect');
+    mongooseConnect.resolves({success: 'true'});
 
-      delete require.cache[require.resolve('../config/passport')];
-      require('../config/passport');
-      expect(dotenvConfig.calledOnce).to.equal(true);
-      dotenvConfig.restore();
-    });
+    process.env.CI_ENVIRONMENT_MONGOURI = "dummymongouri";
+    delete require.cache[require.resolve('../server/db')];
+    require('../server/db');
+    mongooseConnect.restore();
+  });
 
-    it('ROUTES/API/FUNCTIONS Include', function() {
-      const dotenvConfig = sinon.stub(dotenv, 'config');
-      dotenvConfig.callsFake(() => {
-        process.env.BUILD_ENVIRONMENT_SECRETORKEY="dummykey";
-        process.env.BUILD_ENVIRONMENT_EMAIL="dummyemail";
-        process.env.BUILD_ENVIRONMENT_PASSWORD="dummypassword";
-      });
-
-      delete require.cache[require.resolve('../routes/api/functions')];
-      require('../routes/api/functions');
-      expect(dotenvConfig.calledOnce).to.equal(true);
-      dotenvConfig.restore();
-    });
-
-    it('DB Include', function() {
-      const mongooseConnect = sinon.stub(mongoose, 'connect');
-      mongooseConnect.resolves({success: 'true'});
-
-      // process.env.CI_ENVIRONMENT_MONGOURI = "dummymongouri";
-      const dotenvConfig = sinon.stub(dotenv, 'config');
-      dotenvConfig.callsFake(() => {
-        process.env.BUILD_ENVIRONMENT_MONGOURI = "dummymongouri";
-      });
-      delete require.cache[require.resolve('../server/db')];
-      require('../server/db');
-      expect(dotenvConfig.calledOnce).to.equal(true);
-      expect(mongooseConnect.calledOnce).to.equal(true);
-      dotenvConfig.restore();
-      mongooseConnect.restore();
-    });
-
-    it('INDEX Include', function() {
-      // process.env.CI_ENVIRONMENT_SESSIONSECRET = "dummysecret";
-      const dotenvConfig = sinon.stub(dotenv, 'config');
-      dotenvConfig.callsFake(() => {
-        process.env.CI_ENVIRONMENT_SESSIONSECRET = "dummysecret";
-      });
-      delete require.cache[require.resolve('../server')];
-      require('../server');
-      expect(dotenvConfig.calledOnce).to.equal(true);
-      dotenvConfig.restore();
-    });
+  it('INDEX Include', function() {
+    process.env.CI_ENVIRONMENT_SESSIONSECRET = "dummysecret";
+    delete require.cache[require.resolve('../server')];
+    require('../server');
   });
 });

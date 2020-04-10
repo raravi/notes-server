@@ -4,19 +4,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 
-let keys;
-if (!process.env.CI_ENVIRONMENT) {
-  // keys = require("../../config/keys");
-  keys = {};
-  keys.secretOrKey = process.env.BUILD_ENVIRONMENT_SECRETORKEY;
-  keys.email = process.env.BUILD_ENVIRONMENT_EMAIL;
-  keys.password = process.env.BUILD_ENVIRONMENT_PASSWORD;
-} else {
-  keys = {};
-  keys.secretOrKey = process.env.CI_ENVIRONMENT_SECRETORKEY;
-  keys.email = process.env.CI_ENVIRONMENT_EMAIL;
-  keys.password = process.env.CI_ENVIRONMENT_PASSWORD;
-}
+// Config from Environment variables
+let keys = {};
+keys.secretOrKey = process.env.NOTESAPP_SECRETORKEY;
+keys.email = process.env.NOTESAPP_EMAIL;
+keys.password = process.env.NOTESAPP_PASSWORD;
 
 /**
  * Load input validation
