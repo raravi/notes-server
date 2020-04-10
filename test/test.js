@@ -1284,35 +1284,3 @@ describe('Passport.js', function() {
       });
   });
 });
-
-/**
- * Tests for the CONFIG variables.
- */
-describe('CONFIG Tests: In CI environment', function() {
-  it('Passport Include', function() {
-    process.env.CI_ENVIRONMENT_SECRETORKEY = "dummykey";
-    delete require.cache[require.resolve('../config/passport')];
-    require('../config/passport');
-  });
-
-  it('ROUTES/API/FUNCTIONS Include', function() {
-    delete require.cache[require.resolve('../routes/api/functions')];
-    require('../routes/api/functions');
-  });
-
-  it('DB Include', function() {
-    const mongooseConnect = sinon.stub(mongoose, 'connect');
-    mongooseConnect.resolves({success: 'true'});
-
-    process.env.CI_ENVIRONMENT_MONGOURI = "dummymongouri";
-    delete require.cache[require.resolve('../server/db')];
-    require('../server/db');
-    mongooseConnect.restore();
-  });
-
-  it('INDEX Include', function() {
-    process.env.CI_ENVIRONMENT_SESSIONSECRET = "dummysecret";
-    delete require.cache[require.resolve('../server')];
-    require('../server');
-  });
-});

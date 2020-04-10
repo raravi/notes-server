@@ -2,8 +2,7 @@ require('dotenv').config();
 const mongoose = require("mongoose");
 
 // Config from Environment variables
-let db;
-db = process.env.NOTESAPP_MONGOURI;
+let db = process.env.NOTESAPP_MONGOURI;
 
 // Connect to MongoDB
 
