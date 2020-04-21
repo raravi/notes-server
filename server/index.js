@@ -1,5 +1,4 @@
 require('dotenv').config();
-const passport = require("passport");
 const bodyParser = require("body-parser");
 const rateLimit = require("express-rate-limit");
 const cors = require('cors');
@@ -10,7 +9,6 @@ const express = require('express');
 const mongooseConnection = require('./db');
 
 const app = express();
-const port = 8000;
 
 const users = require("../routes/api/users");
 
@@ -36,10 +34,6 @@ app.use(limiter);
 // Bodyparser middleware
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
-
-// Passport middleware
-app.use(passport.initialize());
-require("../config/passport")(passport);
 
 // Session Middleware
 app.use(session({
