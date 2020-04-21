@@ -10,14 +10,14 @@ const session = require('express-session');
 const dotenv = require('dotenv');
 const { resetPassword,
         logout,
-        syncNote } = require("../routes/api/functions");
+        syncNote,
+        initialSync } = require("../routes/api/functions");
 
 /**
  * Load User / Note / Session models
  */
 const User = require("../models/User");
 const Note = require("../models/Note");
-const Session = require("./models/Session");
 
 /**
  * Stubs / Mocks
@@ -48,7 +48,9 @@ const mockResponse = () => {
   return res;
 };
 
-let registerData = {
+let token1000Years =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVlNWVkY2E0M2FhOWRjNTg3NTAzZTFiNCIsIm5hbWUiOiJBbWl0aCBSYXJhdmkiLCJpYXQiOjE1ODc1MTA5MTUsImV4cCI6MzMxNDQ0MzY5MTV9.O1SHJWvo4s7fYjU-6LsbDhaaZ72LhFe5ILijOe2y3NM",
+    registerData = {
       api: '/api/users/register',
       json: null,
       success: 'New user registered successfully!',
@@ -98,6 +100,21 @@ let registerData = {
       errorNotUpdated: { error: "There was an error, note couldn't be updated!" },
       errorNotFound: "Note not found",
       errorNotSynced: "Sync error"
+    },
+    initialSyncData = {
+      api: '/api/users/initialsync',
+      json: {
+        "userid": "dummyuser"
+      },
+      notes: [{
+        id: "dummyid1",
+        note: "dummynote1",
+        modifieddate: "2020-03-03T22:39:32.371Z"
+      },{
+        id: "dummyid2",
+        note: "dummynote2",
+        modifieddate: "2020-03-03T22:39:32.371Z"
+      }]
     },
     sendAllData = {
       api: '/api/users/sendall',
@@ -154,35 +171,6 @@ let registerData = {
     errorData = {
       simpleError: { error: "Error" }
     };
-
-/**
- * This is a helper function to delete a session after test.
- */
-function deleteSession(token) {
-  Session.find({}, {}, { sort: { _id: 1 }}).then((sessions) => {
-    let sessionId;
-    for (let i = 0; i < sessions.length; i++) {
-      let sessionData = JSON.parse(sessions[i].session);
-      if (sessionData.token === token) {
-        sessionId = sessions[i].id;
-        break;
-      }
-    }
-    if (sessionId) {
-      Session.findByIdAndRemove(sessionId).then((session) => {
-        if (session)
-          console.log("    Session deleted!");
-        else
-          console.log("    Session not deleted!");
-      })
-      .catch(err => {
-        console.log("    Delete failed!");
-      });
-    } else {
-      console.log("    Couldn't find session to delete!");
-    }
-  });
-}
 
 before(function() {
   console.log("  before");
@@ -395,8 +383,6 @@ describe('POST /login', function() {
         let tokenDecoded = jwtDecode(response.body.token);
         expect(response.body.success).to.equal(true);
         expect(tokenDecoded.name).to.equal('Amith Raravi');
-        // Delete session
-        deleteSession(token);
       });
   });
 
@@ -845,28 +831,6 @@ describe('POST /logout', function() {
  * Tests for the SYNC endpoint.
  */
 describe('POST /sync', function() {
-  let token;
-
-  before(function(done) {
-    loginData.json = {
-      "email": "amith.raravi@gmail.com",
-      "password": "DmNcMZKa488WiBy",
-    };
-    request(app)
-      .post(loginData.api)
-      .send(loginData.json)
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .then(response => {
-        token = response.body.token.slice(7);
-        let tokenDecoded = jwtDecode(response.body.token);
-        expect(response.body.success).to.equal(true);
-        expect(tokenDecoded.name).to.equal('Amith Raravi');
-        done();
-      });
-  });
-
   beforeEach(function() {
     syncData.note = {
       id: "dummyid1",
@@ -876,12 +840,6 @@ describe('POST /sync', function() {
       createddate: mockDateCreated,
       modifiedsession: "dummysession1"
     };
-  });
-
-  after(function(done) {
-    // Delete session
-    deleteSession(token);
-    done();
   });
 
   it('success: note modified by another session (synceddate)', async function() {
@@ -993,7 +951,7 @@ describe('POST /sync', function() {
       .post(syncData.api)
       .send(syncData.json)
       .set('Accept', 'application/json')
-      .set('Authorization', "Bearer " + token)
+      .set('Authorization', "Bearer " + token1000Years)
       .expect('Content-Type', /json/)
       .expect(404)
       .then(response => {
@@ -1010,7 +968,7 @@ describe('POST /sync', function() {
       .post(syncData.api)
       .send(syncData.json)
       .set('Accept', 'application/json')
-      .set('Authorization', "Bearer " + token)
+      .set('Authorization', "Bearer " + token1000Years)
       .expect('Content-Type', /json/)
       .expect(404)
       .then(response => {
@@ -1021,37 +979,30 @@ describe('POST /sync', function() {
 });
 
 /**
+ * Tests for the INITIALSYNC endpoint.
+ */
+describe('POST /initialsync', function() {
+  it('success: notes sent', async function() {
+    const noteFind = sinon.stub(Note, 'find');
+    noteFind.resolves(sendAllData.notes);
+
+    const req = mockRequest();
+    const res = mockResponse();
+
+    await initialSync(req, res);
+
+    sinon.assert.calledWith(res.json, {
+      success: true,
+      notes: sendAllData.notes
+    });
+    Note.find.restore();
+  });
+});
+
+/**
  * Tests for the SENDALL endpoint.
  */
 describe('POST /sendall', function() {
-  let token;
-
-  before(function(done) {
-    loginData.json = {
-      "email": "amith.raravi@gmail.com",
-      "password": "DmNcMZKa488WiBy",
-    };
-    request(app)
-      .post(loginData.api)
-      .send(loginData.json)
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .then(response => {
-        token = response.body.token.slice(7);
-        let tokenDecoded = jwtDecode(response.body.token);
-        expect(response.body.success).to.equal(true);
-        expect(tokenDecoded.name).to.equal('Amith Raravi');
-        done();
-      });
-  });
-
-  after(function(done) {
-    // Delete session
-    deleteSession(token);
-    done();
-  });
-
   it('success: notes sent', function() {
     const noteFind = sinon.stub(Note, 'find');
     noteFind.resolves(sendAllData.notes);
@@ -1060,7 +1011,7 @@ describe('POST /sendall', function() {
       .post(sendAllData.api)
       .send(sendAllData.json)
       .set('Accept', 'application/json')
-      .set('Authorization', "Bearer " + token)
+      .set('Authorization', "Bearer " + token1000Years)
       .expect('Content-Type', /json/)
       .expect(200)
       .then(response => {
@@ -1075,33 +1026,6 @@ describe('POST /sendall', function() {
  * Tests for the NEW endpoint.
  */
 describe('POST /new', function() {
-  let token;
-  before(function(done) {
-    loginData.json = {
-      "email": "amith.raravi@gmail.com",
-      "password": "DmNcMZKa488WiBy",
-    };
-    request(app)
-      .post(loginData.api)
-      .send(loginData.json)
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .then(response => {
-        token = response.body.token.slice(7);
-        let tokenDecoded = jwtDecode(response.body.token);
-        expect(response.body.success).to.equal(true);
-        expect(tokenDecoded.name).to.equal('Amith Raravi');
-        done();
-      });
-  });
-
-  after(function(done) {
-    // Delete session
-    deleteSession(token);
-    done();
-  });
-
   it('success: new note sent', function() {
     const noteSave = sinon.stub(Note.prototype, 'save');
     noteSave.resolves(newNoteData.note);
@@ -1110,7 +1034,7 @@ describe('POST /new', function() {
       .post(newNoteData.api)
       .send(newNoteData.json)
       .set('Accept', 'application/json')
-      .set('Authorization', "Bearer " + token)
+      .set('Authorization', "Bearer " + token1000Years)
       .expect('Content-Type', /json/)
       .expect(200)
       .then(response => {
@@ -1127,7 +1051,7 @@ describe('POST /new', function() {
       .post(newNoteData.api)
       .send(newNoteData.json)
       .set('Accept', 'application/json')
-      .set('Authorization', "Bearer " + token)
+      .set('Authorization', "Bearer " + token1000Years)
       .expect('Content-Type', /json/)
       .expect(400)
       .then(response => {
@@ -1141,34 +1065,6 @@ describe('POST /new', function() {
  * Tests for the DELETE endpoint.
  */
 describe('POST /delete', function() {
-  let token;
-
-  before(function(done) {
-    loginData.json = {
-      "email": "amith.raravi@gmail.com",
-      "password": "DmNcMZKa488WiBy",
-    };
-    request(app)
-      .post(loginData.api)
-      .send(loginData.json)
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .then(response => {
-        token = response.body.token.slice(7);
-        let tokenDecoded = jwtDecode(response.body.token);
-        expect(response.body.success).to.equal(true);
-        expect(tokenDecoded.name).to.equal('Amith Raravi');
-        done();
-      });
-  });
-
-  after(function(done) {
-    // Delete session
-    deleteSession(token);
-    done();
-  });
-
   it('success: note deleted', function() {
     const noteFindByIdAndRemove = sinon.stub(Note, 'findByIdAndRemove');
     noteFindByIdAndRemove.resolves({});
@@ -1177,7 +1073,7 @@ describe('POST /delete', function() {
       .post(deleteNoteData.api)
       .send(deleteNoteData.json)
       .set('Accept', 'application/json')
-      .set('Authorization', "Bearer " + token)
+      .set('Authorization', "Bearer " + token1000Years)
       .expect('Content-Type', /json/)
       .expect(200)
       .then(response => {
@@ -1194,7 +1090,7 @@ describe('POST /delete', function() {
       .post(deleteNoteData.api)
       .send(deleteNoteData.json)
       .set('Accept', 'application/json')
-      .set('Authorization', "Bearer " + token)
+      .set('Authorization', "Bearer " + token1000Years)
       .expect('Content-Type', /json/)
       .expect(400)
       .then(response => {
@@ -1224,34 +1120,6 @@ describe('GET /resetpassword', function() {
  * Tests for the Passport authentication.
  */
 describe('Passport.js', function() {
-  let token;
-
-  before(function(done) {
-    loginData.json = {
-      "email": "amith.raravi@gmail.com",
-      "password": "DmNcMZKa488WiBy",
-    };
-    request(app)
-      .post(loginData.api)
-      .send(loginData.json)
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .then(response => {
-        token = response.body.token.slice(7);
-        let tokenDecoded = jwtDecode(response.body.token);
-        expect(response.body.success).to.equal(true);
-        expect(tokenDecoded.name).to.equal('Amith Raravi');
-        done();
-      });
-  });
-
-  after(function(done) {
-    // Delete session
-    deleteSession(token);
-    done();
-  });
-
   it('User.findOne: error', function() {
     const userFindOne = sinon.stub(User, 'findOne');
     userFindOne.callsFake((p1, cb) => cb(errorData.simpleError));
@@ -1260,7 +1128,7 @@ describe('Passport.js', function() {
       .post(deleteNoteData.api)
       .send(deleteNoteData.json)
       .set('Accept', 'application/json')
-      .set('Authorization', "Bearer " + token)
+      .set('Authorization', "Bearer " + token1000Years)
       .expect(500)
       .then(response => {
         expect(response.res.statusMessage).to.equal("Internal Server Error");
@@ -1276,7 +1144,7 @@ describe('Passport.js', function() {
       .post(deleteNoteData.api)
       .send(deleteNoteData.json)
       .set('Accept', 'application/json')
-      .set('Authorization', "Bearer " + token)
+      .set('Authorization', "Bearer " + token1000Years)
       .expect(401)
       .then(response => {
         expect(response.text).to.equal("Unauthorized");

@@ -7,6 +7,7 @@ const { login,
         resetPassword,
         logout,
         syncNote,
+        initialSync,
         sendAllNotes,
         newNote,
         deleteNote } = require("./functions");
@@ -60,6 +61,15 @@ router.post("/logout",
 router.post("/sync",
             passport.authenticate('jwt', { session: false }),
             syncNote);
+
+/**
+ * @route POST api/users/initialsync
+ * @desc Send all the notes from DB & set synceddate.
+ * @access Public
+ */
+router.post("/initialsync",
+            passport.authenticate('jwt', { session: false }),
+            initialSync);
 
 /**
  * @route POST api/users/sendall

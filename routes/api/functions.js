@@ -106,22 +106,9 @@ const login = (req, res) => {
             expiresIn: 31556926 // 1 year in seconds
           },
           (err, token) => {
-            req.session.token = token;
-            Note.find({userid: user.id}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
-              let notes = [];
-              req.session.synceddate = Date.now();
-              docs.forEach(doc =>
-                notes.push({
-                  id: doc.id,
-                  note: doc.note,
-                  modifieddate: doc.modifieddate
-                })
-              );
-              res.json({
-                success: true,
-                token: "Bearer " + token,
-                notes: notes
-              });
+            res.json({
+              success: true,
+              token: "Bearer " + token
             });
           }
         );
@@ -342,6 +329,29 @@ const syncNote = (req, res) => {
 };
 
 /**
+ * This function handles initial syncing of the user session.
+ * It creates synceddate, and sends all notes to the user.
+ * If the details are wrong, throws relevant errors.
+ */
+const initialSync = (req, res) => {
+  Note.find({userid: req.body.userid}, {}, { sort: { _id: 1 }, limit: 50 }).then(docs => {
+    let notes = [];
+    req.session.synceddate = Date.now();
+    docs.forEach(doc =>
+      notes.push({
+        id: doc.id,
+        note: doc.note,
+        modifieddate: doc.modifieddate
+      })
+    );
+    res.json({
+      success: true,
+      notes: notes
+    });
+  });
+};
+
+/**
  * This function handles syncing of all notes of the user.
  * If the details are wrong, throws relevant errors.
  */
@@ -412,6 +422,7 @@ module.exports = {  login,
                     resetPassword,
                     logout,
                     syncNote,
+                    initialSync,
                     sendAllNotes,
                     newNote,
                     deleteNote };
