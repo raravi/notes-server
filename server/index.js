@@ -1,6 +1,3 @@
-if (process.env.ENVIRONMENT != 'PROD') {
-  require('dotenv').config();
-}
 const bodyParser = require("body-parser");
 const rateLimit = require("express-rate-limit");
 const cors = require('cors');
@@ -47,10 +44,5 @@ app.use(session({
 
 // Routes
 app.use("/api/users", users);
-
-// Reset Password
-app.get('/resetpassword', function(req, res) {
-    res.sendFile(path.join(__dirname, '../', '/resetpassword/index.html'));
-});
 
 module.exports = app;

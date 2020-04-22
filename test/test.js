@@ -1,3 +1,6 @@
+if (process.env.ENVIRONMENT != 'PROD') {
+  require('dotenv').config();
+}
 const request = require('supertest');
 const app = require('../server');
 const expect = require('chai').expect;
@@ -185,7 +188,7 @@ after(function() {
 /**
  * Tests for the REGISTER endpoint.
  */
-describe('POST /register', function() {
+describe.skip('POST /register', function() {
   beforeEach(function() {
     registerData.json = {
       "name": "Amith Raravi",
@@ -362,7 +365,7 @@ describe('POST /register', function() {
 /**
  * Tests for the LOGIN endpoint.
  */
-describe('POST /login', function() {
+describe.skip('POST /login', function() {
   beforeEach(function() {
     loginData.json = {
       "email": "amith.raravi@gmail.com",
@@ -459,7 +462,7 @@ describe('POST /login', function() {
 /**
  * Tests for the FORGOTPASSWORD endpoint.
  */
-describe('POST /forgotpassword', function() {
+describe.skip('POST /forgotpassword', function() {
   beforeEach(function() {
     forgotPasswordData.json = {
       "email": "amith.raravi@gmail.com"
@@ -577,7 +580,7 @@ describe('POST /forgotpassword', function() {
 /**
  * Tests for the RESETPASSWORD endpoint.
  */
-describe('POST /resetpassword', function() {
+describe.skip('POST /resetpassword', function() {
   beforeEach(function() {
     resetPasswordData.json = {
       "email": "amith.raravi@gmail.com",
@@ -1102,7 +1105,7 @@ describe('POST /delete', function() {
 /**
  * Tests for the GET /RESETPASSWORD endpoint.
  */
-describe('GET /resetpassword', function() {
+describe.skip('GET /resetpassword', function() {
   it('success: responds with HTML', function() {
     return request(app)
       .get('/resetpassword')

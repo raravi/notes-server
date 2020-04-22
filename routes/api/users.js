@@ -1,11 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
-const { login,
-        register,
-        forgotPassword,
-        resetPassword,
-        logout,
+const { logout,
         syncNote,
         initialSync,
         sendAllNotes,
@@ -15,34 +11,6 @@ const { login,
 // Passport middleware
 router.use(passport.initialize());
 require("../../config/passport")(passport);
-
-/**
- * @route POST api/users/register
- * @desc Register user
- * @access Public
- */
-router.post("/register", register);
-
-/**
- * @route POST api/users/login
- * @desc Login user and return JWT token
- * @access Public
- */
-router.post("/login", login);
-
-/**
- * @route POST api/users/forgotpassword
- * @desc Get valid email from user and send a RESET mail to the registered email.
- * @access Public
- */
-router.post("/forgotpassword", forgotPassword);
-
-/**
- * @route POST api/users/resetpassword
- * @desc Get valid RESET code, new password from user and update the password in DB.
- * @access Public
- */
-router.post("/resetpassword", resetPassword);
 
 /**
  * @route POST api/users/logout
