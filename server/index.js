@@ -25,7 +25,7 @@ app.use(cors({
   credentials: true // enable set cookie (needed for AXIOS frontend requests)
 }));
 
-app.options('*', cors()) // include before other routes
+// app.options('*', cors()) // include before other routes
 
 // Rate Limiter Middleware
 const limiter = rateLimit({
