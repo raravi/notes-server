@@ -1110,7 +1110,7 @@ describe('GET /resetpassword', function() {
       .expect(200)
       .then(response => {
         expect(response.headers['content-type']).to.equal('text/html; charset=UTF-8');
-        expect(response.headers['content-length']).to.equal('11330');
+        expect(response.headers['content-length']).to.equal('11354');
       });
   });
 });
