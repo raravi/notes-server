@@ -20,10 +20,12 @@ keys.sessionSecret = process.env.NOTESAPP_SESSIONSECRET;
 
 // Enable CORS
 app.use(cors({
-  origin:['http://localhost:3000'],
-  methods:['GET','POST'],
+  origin:['http://localhost:3000', 'https://notes-raravi.netlify.app'],
+  // methods:['GET','POST'],
   credentials: true // enable set cookie (needed for AXIOS frontend requests)
 }));
+
+app.options('*', cors()) // include before other routes
 
 // Rate Limiter Middleware
 const limiter = rateLimit({
