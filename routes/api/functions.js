@@ -1,4 +1,6 @@
-require('dotenv').config();
+if (process.env.ENVIRONMENT != 'PROD') {
+  require('dotenv').config();
+}
 const crypto = require('crypto');
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");

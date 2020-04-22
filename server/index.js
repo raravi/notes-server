@@ -1,6 +1,6 @@
-console.log("What the duck is it called?! ", process.env.ENVIRONMENT);
-
-require('dotenv').config();
+if (process.env.ENVIRONMENT != 'PROD') {
+  require('dotenv').config();
+}
 const bodyParser = require("body-parser");
 const rateLimit = require("express-rate-limit");
 const cors = require('cors');
