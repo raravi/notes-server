@@ -1,3 +1,5 @@
+console.log("What the duck is it called?! ", process.env.ENVIRONMENT);
+
 require('dotenv').config();
 const bodyParser = require("body-parser");
 const rateLimit = require("express-rate-limit");

@@ -7,7 +7,6 @@ const jwtDecode = require('jwt-decode');
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const session = require('express-session');
-const dotenv = require('dotenv');
 const { resetPassword,
         logout,
         syncNote,
