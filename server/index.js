@@ -13,8 +13,8 @@ const users = require("../routes/api/users");
 
 // Config from Environment variables
 let keys = {};
-keys.sessionSecret = process.env.NOTESAPP_SESSIONSECRET;
-keys.clientUrl = process.env.NOTESAPP_CLIENTURL;
+keys.sessionSecret = process.env.APP_SESSIONSECRET;
+keys.clientUrl = process.env.APP_CLIENTURL;
 
 // Enable CORS
 app.use(cors({

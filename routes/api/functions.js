@@ -1,6 +1,3 @@
-// if (process.env.ENVIRONMENT != 'PROD') {
-//   require('dotenv').config();
-// }
 const crypto = require('crypto');
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -8,9 +5,9 @@ const nodemailer = require("nodemailer");
 
 // Config from Environment variables
 let keys = {};
-keys.secretOrKey = process.env.NOTESAPP_SECRETORKEY;
-keys.email = process.env.NOTESAPP_EMAIL;
-keys.password = process.env.NOTESAPP_PASSWORD;
+keys.secretOrKey = process.env.APP_SECRETORKEY;
+keys.email = process.env.APP_EMAIL;
+keys.password = process.env.APP_PASSWORD;
 
 /**
  * Load Note model

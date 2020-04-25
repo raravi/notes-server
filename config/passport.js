@@ -1,13 +1,10 @@
-// if (process.env.ENVIRONMENT != 'PROD') {
-//   require('dotenv').config();
-// }
 const JwtStrategy = require("passport-jwt").Strategy;
 const ExtractJwt = require("passport-jwt").ExtractJwt;
 const User = require("../models/User");
 
 // Config from Environment variables
 let keys = {};
-keys.secretOrKey = process.env.NOTESAPP_SECRETORKEY;
+keys.secretOrKey = process.env.APP_SECRETORKEY;
 
 var opts = {};
 
