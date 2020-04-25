@@ -14,10 +14,11 @@ const users = require("../routes/api/users");
 // Config from Environment variables
 let keys = {};
 keys.sessionSecret = process.env.NOTESAPP_SESSIONSECRET;
+keys.clientUrl = process.env.NOTESAPP_CLIENTURL;
 
 // Enable CORS
 app.use(cors({
-  origin:['http://localhost:3000', 'https://notes-raravi.netlify.app'],
+  origin:['http://localhost:3000', keys.clientUrl],
   methods:['GET','POST'],
   credentials: true // enable set cookie (needed for AXIOS frontend requests)
 }));
