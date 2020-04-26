@@ -14,15 +14,18 @@ The server runs in **node.js** using [Express](https://expressjs.com/) to setup 
 
 ## API endpoints
 
+This repo contains the following:
 1. `/sync`: Realtime synching of notes to the Database, called every 5 seconds from [notes-clent](https://github.com/raravi/notes-client) app.
 2. `/sendall`: Send All notes to the client, called every 5 seconds from the **notes-client** app.
 3. `/new`: Create a new note in the DB.
 4. `/delete`: Delete the selected note from the DB.
-5. `/login`: For login of users.
-6. `/logout`: Log out the current authenticated user.
-7. `/register`: To register new users.
-8. `/forgotpassword`: To send a reset mail to the registered email address of the user.
-9. `/resetpassword`: To handle reset password functionality.
+5. `/logout`: Log out the current authenticated user.
+
+The below endpoints are moved to the repo [notes-server-lambda](https://github.com/raravi/notes-server-lambda) as I've split it into AWS Lambda function!
+1. `/login`: For login of users.
+2. `/register`: To register new users.
+3. `/forgotpassword`: To send a reset mail to the registered email address of the user.
+4. `/resetpassword`: To handle reset password functionality.
 
 **Note**: API endpoints '/sync', `/sendall`, `/new`, `/delete` and `/logout` need to be authenticated by **Passport.js** to work. The client needs to send the JSON webtoken through the **Authorization** header. Please see the **notes-client** for how the API calls are made.
 
