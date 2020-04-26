@@ -23,6 +23,8 @@ app.use(cors({
   credentials: true // enable set cookie (needed for AXIOS frontend requests)
 }));
 
+app.options('*', cors());
+
 // Rate Limiter Middleware
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
