@@ -23,7 +23,14 @@ app.use(cors({
   credentials: true // enable set cookie (needed for AXIOS frontend requests)
 }));
 
-app.options('*', cors());
+//app.options('*', cors());
+
+app.use(function(req, res, next) {
+  res.header('Access-Control-Allow-Origin', keys.clientUrl);
+  res.header('Access-Control-Allow-Credentials', true);
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
 
 // Rate Limiter Middleware
 const limiter = rateLimit({
