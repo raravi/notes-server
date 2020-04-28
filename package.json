@@ -2,6 +2,7 @@
   "name": "notes-server",
   "version": "3.0.0",
   "description": "A node.js server for notes.",
+  "repository": "https://github.com/raravi/notes-server.git",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
