@@ -18,7 +18,7 @@ keys.clientUrl = process.env.APP_CLIENTURL;
 
 // Enable CORS
 app.use(cors({
-  origin:['http://localhost:3000', keys.clientUrl],
+  origin:[/*'http://localhost:3000',*/ keys.clientUrl],
   methods:['GET','POST'],
   credentials: true // enable set cookie (needed for AXIOS frontend requests)
 }));
