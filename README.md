@@ -42,3 +42,5 @@ A mail is triggered to the user with the [nodemailer](https://nodemailer.com/usa
 This project has a code coverage of 100% with functional as well as unit tests written with care.
 
 Have fun with the code!
+
+[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y8Y21VCIL)
