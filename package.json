@@ -18,7 +18,7 @@
     "dotenv": "^8.2.0",
     "jwt-decode": "^3.0.0",
     "mocha": "^8.2.0",
-    "nodemon": "^2.0.5",
+    "nodemon": "^2.0.6",
     "nyc": "^15.1.0",
     "sinon": "^9.2.0",
     "supertest": "^5.0.0"
@@ -33,7 +33,7 @@
     "express-session": "^1.17.1",
     "is-empty": "^1.2.0",
     "jsonwebtoken": "^8.5.1",
-    "mongoose": "^5.10.9",
+    "mongoose": "^5.10.10",
     "nodemailer": "^6.4.14",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
