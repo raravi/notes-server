@@ -20,8 +20,8 @@
     "mocha": "^8.2.0",
     "nodemon": "^2.0.6",
     "nyc": "^15.1.0",
-    "sinon": "^9.2.0",
-    "supertest": "^5.0.0"
+    "sinon": "^9.2.1",
+    "supertest": "^6.0.0"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -33,7 +33,7 @@
     "express-session": "^1.17.1",
     "is-empty": "^1.2.0",
     "jsonwebtoken": "^8.5.1",
-    "mongoose": "^5.10.10",
+    "mongoose": "^5.10.11",
     "nodemailer": "^6.4.14",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
