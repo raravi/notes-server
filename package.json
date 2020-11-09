@@ -14,14 +14,14 @@
   "license": "MIT",
   "devDependencies": {
     "chai": "^4.2.0",
-    "codecov": "^3.8.0",
+    "codecov": "^3.8.1",
     "dotenv": "^8.2.0",
-    "jwt-decode": "^3.0.0",
-    "mocha": "^8.2.0",
+    "jwt-decode": "^3.1.1",
+    "mocha": "^8.2.1",
     "nodemon": "^2.0.6",
     "nyc": "^15.1.0",
     "sinon": "^9.2.1",
-    "supertest": "^6.0.0"
+    "supertest": "^6.0.1"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -33,8 +33,8 @@
     "express-session": "^1.17.1",
     "is-empty": "^1.2.0",
     "jsonwebtoken": "^8.5.1",
-    "mongoose": "^5.10.11",
-    "nodemailer": "^6.4.14",
+    "mongoose": "^5.10.13",
+    "nodemailer": "^6.4.15",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
     "path": "^0.12.7",
