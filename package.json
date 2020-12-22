@@ -20,7 +20,7 @@
     "mocha": "^8.2.1",
     "nodemon": "^2.0.6",
     "nyc": "^15.1.0",
-    "sinon": "^9.2.1",
+    "sinon": "^9.2.2",
     "supertest": "^6.0.1"
   },
   "dependencies": {
@@ -33,11 +33,11 @@
     "express-session": "^1.17.1",
     "is-empty": "^1.2.0",
     "jsonwebtoken": "^8.5.1",
-    "mongoose": "^5.11.4",
-    "nodemailer": "^6.4.16",
+    "mongoose": "^5.11.7",
+    "nodemailer": "^6.4.17",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
     "path": "^0.12.7",
-    "validator": "^13.5.1"
+    "validator": "^13.5.2"
   }
 }
