@@ -18,9 +18,9 @@
     "dotenv": "^8.2.0",
     "jwt-decode": "^3.1.2",
     "mocha": "^8.2.1",
-    "nodemon": "^2.0.6",
+    "nodemon": "^2.0.7",
     "nyc": "^15.1.0",
-    "sinon": "^9.2.2",
+    "sinon": "^9.2.3",
     "supertest": "^6.0.1"
   },
   "dependencies": {
@@ -33,7 +33,7 @@
     "express-session": "^1.17.1",
     "is-empty": "^1.2.0",
     "jsonwebtoken": "^8.5.1",
-    "mongoose": "^5.11.9",
+    "mongoose": "^5.11.11",
     "nodemailer": "^6.4.17",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
