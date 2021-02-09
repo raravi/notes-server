@@ -13,7 +13,7 @@
   "homepage": "https://www.amithraravi.com/",
   "license": "MIT",
   "devDependencies": {
-    "chai": "^4.2.0",
+    "chai": "^4.3.0",
     "codecov": "^3.8.1",
     "dotenv": "^8.2.0",
     "jwt-decode": "^3.1.2",
@@ -33,7 +33,7 @@
     "express-session": "^1.17.1",
     "is-empty": "^1.2.0",
     "jsonwebtoken": "^8.5.1",
-    "mongoose": "^5.11.14",
+    "mongoose": "^5.11.15",
     "nodemailer": "^6.4.17",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
