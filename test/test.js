@@ -88,7 +88,7 @@ let token1000Years =
     },
     logoutData = {
       api: '/api/users/logout',
-      token: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVlNWVkY2E0M2FhOWRjNTg3NTAzZTFiNCIsIm5hbWUiOiJBbWl0aCBSYXJhdmkiLCJpYXQiOjE1ODUxOTcxNzEsImV4cCI6MTYxNjc1NDA5N30.4z8q_gKxZM8edbCeKLOYpBNEc-YB9cXvdM5TI0lDSCQ',
+      token: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVlNWVkY2E0M2FhOWRjNTg3NTAzZTFiNCIsIm5hbWUiOiJBbWl0aCBSYXJhdmkiLCJpYXQiOjE1ODc1MTA5MTUsImV4cCI6MzMxNDQ0MzY5MTV9.O1SHJWvo4s7fYjU-6LsbDhaaZ72LhFe5ILijOe2y3NM',
       loggedOff: 'Logged off',
       error: { logoff: "There was an error, please try again!" },
     },
