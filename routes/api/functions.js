@@ -1,8 +1,3 @@
-const crypto = require('crypto');
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
-
 // Config from Environment variables
 let keys = {};
 keys.secretOrKey = process.env.APP_SECRETORKEY;
