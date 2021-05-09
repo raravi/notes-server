@@ -1,7 +1,7 @@
 const express = require("express");
 const session = require("express-session");
 const rateLimit = require("express-rate-limit");
-const helmet = require('helmet')
+const helmet = require("helmet");
 const cors = require("cors");
 const MongoStore = require("connect-mongo");
 const mongoose = require("mongoose");
@@ -49,18 +49,27 @@ mongoose.connection.on("error", () =>
 );
 mongoose.connection.once("open", () => {
   console.log("MongoDB successfully connected");
-  // Session Middleware
-  app.use(
-    session({
-      secret: keys.sessionSecret,
-      saveUninitialized: false, // don't create session until something stored
-      resave: false, //don't save session if unmodified
-      store: new MongoStore({ client: mongoose.connection.client }),
-    })
-  );
 });
+
+const mongoStore = MongoStore.create({
+  mongoUrl: keys.db,
+  mongoOptions: {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  },
+});
+
+// Session Middleware
+app.use(
+  session({
+    secret: keys.sessionSecret,
+    saveUninitialized: false, // don't create session until something stored
+    resave: false, //don't save session if unmodified
+    store: mongoStore,
+  })
+);
 
 // Routes
 app.use("/api/users", users);
 
-module.exports = app;
+module.exports = { app, mongoStore };
