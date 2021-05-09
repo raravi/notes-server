@@ -1,7 +1,6 @@
 const express = require("express");
 const session = require("express-session");
 const rateLimit = require("express-rate-limit");
-const helmet = require("helmet");
 const cors = require("cors");
 const MongoStore = require("connect-mongo");
 const mongoose = require("mongoose");
@@ -15,8 +14,6 @@ const keys = {};
 keys.sessionSecret = process.env.APP_SESSIONSECRET;
 keys.clientUrl = process.env.APP_CLIENTURL;
 keys.db = process.env.APP_DB;
-
-app.use(helmet());
 
 // Enable CORS
 app.use(
